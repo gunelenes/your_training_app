@@ -38,7 +38,9 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-localization",
+      "react-native-localize"
     ],
     "experiments": {
       "typedRoutes": true,

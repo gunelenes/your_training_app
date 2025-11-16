@@ -1,0 +1,45 @@
+{
+  "workouts": "Antrenmanlar",
+  "my_workouts": "Antrenmanlarım",
+  "new_workout": "Yeni Antrenman",
+  "add_workout": "Antrenmanı Oluştur",
+  "no_workouts": "Henüz antrenman oluşturmadınız.",
+
+  "exercises": "Egzersizler",
+  "add_exercise": "Egzersiz Ekle",
+
+  "sets": "Setler",
+  "set": "set",
+
+  "create_new": "+ Yeni Antrenman Oluştur",
+  "save": "Kaydet",
+
+  "select_photo": "Galeriden Fotoğraf Seç",
+  "take_photo": "Kamera ile Fotoğraf Çek",
+  "no_photo": "Henüz fotoğraf seçilmedi",
+
+  "workout_name": "Antrenman Adı",
+  "workout_placeholder": "Örn: Push Day, Leg Day, Full Body",
+  "workout_desc": "Bu antrenman altında birden fazla egzersiz oluşturup her birine ayrı set ve fotoğraf tanımlayabilirsin.",
+
+  "create": "Oluştur",
+
+  "language": "Dil",
+  "turkish": "Türkçe",
+  "english": "İngilizce",
+
+  "camera_permission": "Kamera izni gerekli",
+  "new_exercise": "Yeni Egzersiz",
+  "no_photo_selected": "Henüz fotoğraf seçilmedi",
+  "select_from_gallery": "Galeriden Seç",
+  "take_photo_again": "Kamerayla Çek",
+  "exercise_name_placeholder": "Egzersiz Adı (örn: Bench Press)",
+  "kg": "Kg",
+  "reps": "Tekrar",
+  "exercise_saved": "Egzersiz kaydedildi!",
+  "exercise_name_required": "Egzersiz adı zorunludur",
+  "at_least_one_set": "En az bir set ekleyin",
+
+  "home": "Anasayfa",
+  "profile": "Profil"
+}

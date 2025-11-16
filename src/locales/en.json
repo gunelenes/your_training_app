@@ -1,0 +1,44 @@
+{
+  "workouts": "Workouts",
+  "my_workouts": "My Workouts",
+  "new_workout": "New Workout",
+  "add_workout": "Create Workout",
+  "no_workouts": "You haven't created a workout yet.",
+  
+  "exercises": "Exercises",
+  "add_exercise": "Add Exercise",
+
+  "sets": "Sets",
+  "set": "set",
+
+  "create_new": "+ Create New Workout",
+  "save": "Save",
+
+  "select_photo": "Select Photo",
+  "take_photo": "Take Photo",
+  "no_photo": "No photo selected",
+
+  "workout_name": "Workout Name",
+  "workout_placeholder": "Ex: Push Day, Leg Day, Full Body",
+  "workout_desc": "You can add multiple exercises inside this workout.",
+
+  "create": "Create",
+
+  "language": "Language",
+  "turkish": "Turkish",
+  "english": "English",
+
+  "camera_permission": "Camera permission is required",
+  "new_exercise": "New Exercise",
+  "no_photo_selected": "No photo selected",
+  "select_from_gallery": "Select From Gallery",
+  "exercise_name_placeholder": "Exercise Name (e.g., Bench Press)",
+  "kg": "Kg",
+  "reps": "Reps",
+  "exercise_saved": "Exercise saved!",
+  "exercise_name_required": "Exercise name is required",
+  "at_least_one_set": "Please add at least one set",
+
+  "home": "Home",
+  "profile": "Profile"
+}
