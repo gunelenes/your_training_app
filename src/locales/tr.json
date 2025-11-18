@@ -41,5 +41,9 @@
   "at_least_one_set": "En az bir set ekleyin",
 
   "home": "Anasayfa",
-  "profile": "Profil"
+  "profile": "Profil",
+
+  "edit_workout": "Antrenmanı Düzenle",
+  "workout_name_required": "Lütfen antrenman adını girin."
+
 }

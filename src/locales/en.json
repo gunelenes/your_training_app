@@ -40,5 +40,9 @@
   "at_least_one_set": "Please add at least one set",
 
   "home": "Home",
-  "profile": "Profile"
+  "profile": "Profile",
+
+  "edit_workout": "Edit Workout",
+  "workout_name_required": "Please enter a workout name."
+
 }
