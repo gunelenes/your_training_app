@@ -2,7 +2,7 @@ import i18n from "@/src/locales";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   Image,
@@ -75,6 +75,32 @@ export default function CreateWorkout() {
 
   return (
     <View style={styles.container}>
+      {/* CUSTOM HEADER */}
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          headerTitle: i18n.t("new_workout"),
+          headerStyle: {
+            backgroundColor: '#0A0B0D',
+          },
+          headerTintColor: '#667EEA',
+          headerTitleStyle: {
+            fontWeight: '700',
+            fontSize: 18,
+            color: '#fff',
+          },
+          headerShadowVisible: false,
+          headerBackTitle: i18n.t("back") || 'Geri',
+          headerBackTitleStyle: {
+            fontSize: 16,
+            fontWeight: '600',
+          },
+          gestureEnabled: true,
+          gestureDirection: 'horizontal',
+          fullScreenGestureEnabled: true,
+        }}
+      />
+      
       <StatusBar barStyle="light-content" />
       
       <KeyboardAvoidingView

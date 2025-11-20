@@ -4,7 +4,7 @@
   "new_workout": "New Workout",
   "add_workout": "Create Workout",
   "no_workouts": "You haven't created a workout yet.",
-  
+
   "exercises": "Exercises",
   "add_exercise": "Add Exercise",
 
@@ -41,8 +41,25 @@
 
   "home": "Home",
   "profile": "Profile",
-
   "edit_workout": "Edit Workout",
-  "workout_name_required": "Please enter a workout name."
+  "workout_name_required": "Please enter a workout name.",
 
+  /* PROFILE PAGE */
+  "manage_preferences": "Manage your preferences",
+  "current_language": "Current Language",
+  "active": "Active",
+  "settings": "Settings",
+  "notifications": "Notifications",
+  "notifications_desc": "Manage workout reminders",
+  "statistics": "Statistics",
+  "statistics_desc": "View your progress",
+  "theme": "Theme",
+  "theme_desc": "Customize appearance",
+  "about": "About",
+  "version": "Version",
+  "made_with_love": "Made with ❤️",
+  "language_changed": "Language has been changed to {{lang}}",
+  "ok": "OK",
+
+  "back": "Back"
 }

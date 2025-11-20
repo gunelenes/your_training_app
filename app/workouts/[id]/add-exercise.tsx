@@ -1,8 +1,8 @@
 import i18n from "@/src/locales";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
-import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -18,10 +18,19 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { GestureHandlerRootView, Swipeable } from "react-native-gesture-handler";
-import Animated, { FadeIn, FadeInUp, SlideInLeft } from "react-native-reanimated";
+import {
+  GestureHandlerRootView,
+  Swipeable,
+} from "react-native-gesture-handler";
+import Animated, {
+  FadeIn,
+  FadeInUp,
+  SlideInLeft,
+} from "react-native-reanimated";
 
-// 🎯 ANIMATED SET CARD
+/* ===============================
+   🔥 ANIMATED SET CARD COMPONENT
+================================= */
 const AnimatedSetCard = ({
   item,
   index,
@@ -39,42 +48,43 @@ const AnimatedSetCard = ({
     const scale = dragX.interpolate({
       inputRange: [-100, 0],
       outputRange: [1, 0.5],
-      extrapolate: 'clamp',
+      extrapolate: "clamp",
     });
 
     const opacity = dragX.interpolate({
       inputRange: [-100, -50, 0],
       outputRange: [1, 0.7, 0],
-      extrapolate: 'clamp',
+      extrapolate: "clamp",
     });
 
     return (
-      <RNAnimated.View 
+      <RNAnimated.View
         style={[
           styles.deleteSwipeContainer,
-          { opacity, transform: [{ scale }] }
+          { opacity, transform: [{ scale }] },
         ]}
       >
         <TouchableOpacity
           onPress={() => {
             Alert.alert(
-              "Delete Set",
-              "Are you sure you want to delete this set?",
+              i18n.t("delete_set_title") || "Delete Set",
+              i18n.t("delete_set_confirm") ||
+                "Are you sure you want to delete this set?",
               [
-                { 
-                  text: "Cancel", 
+                {
+                  text: i18n.t("cancel") || "Cancel",
                   style: "cancel",
-                  onPress: () => swipeableRef.current?.close()
+                  onPress: () => swipeableRef.current?.close(),
                 },
                 {
-                  text: "Delete",
+                  text: i18n.t("delete") || "Delete",
                   style: "destructive",
                   onPress: onDelete,
                 },
               ],
-              { 
+              {
                 cancelable: true,
-                userInterfaceStyle: 'dark'
+                userInterfaceStyle: "dark",
               }
             );
           }}
@@ -82,7 +92,7 @@ const AnimatedSetCard = ({
           activeOpacity={0.7}
         >
           <LinearGradient
-            colors={['#FF3B30', '#C62828']}
+            colors={["#FF3B30", "#C62828"]}
             style={styles.deleteGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -90,7 +100,7 @@ const AnimatedSetCard = ({
             <View style={styles.deleteIconContainer}>
               <Text style={styles.deleteIcon}>✕</Text>
             </View>
-            <Text style={styles.deleteText}>Delete</Text>
+            <Text style={styles.deleteText}>{i18n.t("delete")}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </RNAnimated.View>
@@ -109,7 +119,7 @@ const AnimatedSetCard = ({
         <View style={styles.setCard}>
           <View style={styles.setIndexContainer}>
             <LinearGradient
-              colors={['#667EEA', '#764BA2']}
+              colors={["#667EEA", "#764BA2"]}
               style={styles.setIndexGradient}
             >
               <Text style={styles.setIndex}>{index + 1}</Text>
@@ -118,7 +128,7 @@ const AnimatedSetCard = ({
 
           <View style={styles.inputGroup}>
             <View style={styles.inputWrapper}>
-              <Text style={styles.inputLabel}>Weight</Text>
+              <Text style={styles.inputLabel}>{i18n.t("kg")}</Text>
               <TextInput
                 style={styles.input}
                 placeholder="0"
@@ -133,7 +143,7 @@ const AnimatedSetCard = ({
             <View style={styles.inputDivider} />
 
             <View style={styles.inputWrapper}>
-              <Text style={styles.inputLabel}>Reps</Text>
+              <Text style={styles.inputLabel}>{i18n.t("reps")}</Text>
               <TextInput
                 style={styles.input}
                 placeholder="0"
@@ -156,6 +166,9 @@ const AnimatedSetCard = ({
   );
 };
 
+/* ===============================
+   🔥 MAIN SCREEN
+================================= */
 export default function AddExercise() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
@@ -166,15 +179,23 @@ export default function AddExercise() {
   const [langUpdate, setLangUpdate] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
+  /* 🌀 Dil değişimini dinle */
   useEffect(() => {
     const handler = () => setLangUpdate((x) => x + 1);
     i18n.on("languageChanged", handler);
     return () => i18n.off("languageChanged", handler);
   }, []);
 
+  /* ===============================
+     📌 HEADER (i18n Destekli)
+  ================================ */
+  const headerTitle = i18n.t("new_exercise");
+
+  /* ===============================
+     📷 Fotoğraf işlemleri
+  ================================ */
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.7,
       allowsEditing: true,
       aspect: [16, 9],
@@ -188,7 +209,7 @@ export default function AddExercise() {
   const takePhoto = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert(i18n.t("camera_permission") ?? "Camera permission required");
+      Alert.alert(i18n.t("camera_permission"));
       return;
     }
 
@@ -229,47 +250,79 @@ export default function AddExercise() {
 
   const saveExercise = async () => {
     if (!exerciseName) {
-      Alert.alert("⚠️ Missing Name", i18n.t("exercise_name_required"));
+      Alert.alert(
+        i18n.t("exercise_name_required_title") || "Missing Name",
+        i18n.t("exercise_name_required")
+      );
       return;
     }
 
     if (sets.length === 0) {
-      Alert.alert("⚠️ No Sets", i18n.t("at_least_one_set"));
+      Alert.alert(
+        i18n.t("no_sets_title") || "No Sets",
+        i18n.t("at_least_one_set")
+      );
       return;
     }
 
     setIsLoading(true);
-
-    const newExercise = {
-      id: Date.now().toString(),
-      name: exerciseName,
-      image: exerciseImage || null,
-      sets,
-    };
 
     const raw = await AsyncStorage.getItem("WORKOUTS");
     const workouts = raw ? JSON.parse(raw) : [];
 
     const wIndex = workouts.findIndex((w: any) => w.id === id);
 
+    const newExercise = {
+      id: Date.now().toString(),
+      name: exerciseName,
+      image: exerciseImage,
+      sets,
+    };
+
     if (wIndex !== -1) {
       workouts[wIndex].exercises.push(newExercise);
       await AsyncStorage.setItem("WORKOUTS", JSON.stringify(workouts));
     }
 
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 500));
     setIsLoading(false);
 
-    Alert.alert("✅ Success!", i18n.t("exercise_saved"), [
-      { text: "OK", onPress: () => router.back() }
+    Alert.alert("✅", i18n.t("exercise_saved"), [
+      { text: "OK", onPress: () => router.back() },
     ]);
   };
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      {/* 🔥 CUSTOM HEADER */}
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          headerTitle: headerTitle,
+          headerStyle: {
+            backgroundColor: "#0A0B0D",
+          },
+          headerTintColor: "#667EEA",
+          headerTitleStyle: {
+            fontWeight: "700",
+            fontSize: 18,
+            color: "#fff",
+          },
+          headerShadowVisible: false,
+          headerBackTitle: i18n.t("back") || "Back",
+          headerBackTitleStyle: {
+            fontSize: 16,
+            fontWeight: "600",
+          },
+          gestureEnabled: true,
+          gestureDirection: "horizontal",
+          fullScreenGestureEnabled: true,
+        }}
+      />
+
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
-        
+
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -280,23 +333,33 @@ export default function AddExercise() {
             showsVerticalScrollIndicator={false}
           >
             {/* HEADER */}
-            <Animated.View entering={FadeInUp.duration(600)} style={styles.header}>
-              <Text style={styles.headerSubtext}>Add New</Text>
-              <Text style={styles.title}>{i18n.t("new_exercise")}</Text>
+            <Animated.View
+              entering={FadeInUp.duration(600)}
+              style={styles.header}
+            >
+              <Text style={styles.headerSubtext}>
+                {i18n.t("new_exercise")}
+              </Text>
+              <Text style={styles.title}>
+                {i18n.t("new_exercise")}
+              </Text>
             </Animated.View>
 
             {/* PHOTO SECTION */}
             <Animated.View entering={FadeInUp.delay(200)} style={styles.section}>
               <Text style={styles.label}>
                 <Text style={styles.labelIcon}>📸 </Text>
-                Exercise Photo
+                {i18n.t("select_photo")}
               </Text>
 
               {exerciseImage ? (
                 <View style={styles.imagePreviewContainer}>
-                  <Image source={{ uri: exerciseImage }} style={styles.preview} />
+                  <Image
+                    source={{ uri: exerciseImage }}
+                    style={styles.preview}
+                  />
                   <LinearGradient
-                    colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.7)']}
+                    colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.7)"]}
                     style={styles.previewOverlay}
                   />
                   <View style={styles.photoActionsOverlay}>
@@ -304,13 +367,17 @@ export default function AddExercise() {
                       style={styles.overlayBtn}
                       onPress={pickImage}
                     >
-                      <Text style={styles.overlayBtnText}>📷 Gallery</Text>
+                      <Text style={styles.overlayBtnText}>
+                        🖼️ {i18n.t("select_from_gallery")}
+                      </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.overlayBtn}
                       onPress={takePhoto}
                     >
-                      <Text style={styles.overlayBtnText}>📸 Camera</Text>
+                      <Text style={styles.overlayBtnText}>
+                        📸 {i18n.t("take_photo")}
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -319,7 +386,7 @@ export default function AddExercise() {
                   <View style={styles.photoEmptyState}>
                     <Text style={styles.photoEmptyIcon}>📷</Text>
                     <Text style={styles.photoEmptyText}>
-                      {i18n.t("no_photo_selected") || "No photo selected"}
+                      {i18n.t("no_photo_selected")}
                     </Text>
                   </View>
 
@@ -329,14 +396,12 @@ export default function AddExercise() {
                       onPress={pickImage}
                     >
                       <LinearGradient
-                        colors={['#667EEA', '#764BA2']}
+                        colors={["#667EEA", "#764BA2"]}
                         style={styles.photoBtnGradient}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
                       >
                         <Text style={styles.photoBtnIcon}>🖼️</Text>
                         <Text style={styles.photoBtnText}>
-                          {i18n.t("select_from_gallery") || "Gallery"}
+                          {i18n.t("select_from_gallery")}
                         </Text>
                       </LinearGradient>
                     </TouchableOpacity>
@@ -346,14 +411,12 @@ export default function AddExercise() {
                       onPress={takePhoto}
                     >
                       <LinearGradient
-                        colors={['#4ADE80', '#22C55E']}
+                        colors={["#4ADE80", "#22C55E"]}
                         style={styles.photoBtnGradient}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
                       >
                         <Text style={styles.photoBtnIcon}>📸</Text>
                         <Text style={styles.photoBtnText}>
-                          {i18n.t("take_photo") || "Camera"}
+                          {i18n.t("take_photo")}
                         </Text>
                       </LinearGradient>
                     </TouchableOpacity>
@@ -363,15 +426,18 @@ export default function AddExercise() {
             </Animated.View>
 
             {/* EXERCISE NAME */}
-            <Animated.View entering={FadeInUp.delay(400)} style={styles.section}>
+            <Animated.View
+              entering={FadeInUp.delay(400)}
+              style={styles.section}
+            >
               <Text style={styles.label}>
                 <Text style={styles.labelIcon}>💪 </Text>
-                {i18n.t("exercise_name_placeholder") || "Exercise Name"}
+                {i18n.t("exercise_name")}
               </Text>
               <View style={styles.inputContainer}>
                 <TextInput
                   style={styles.nameInput}
-                  placeholder="e.g., Bench Press"
+                  placeholder={i18n.t("exercise_name_placeholder")}
                   placeholderTextColor="#6E7178"
                   value={exerciseName}
                   onChangeText={setExerciseName}
@@ -380,23 +446,30 @@ export default function AddExercise() {
             </Animated.View>
 
             {/* SETS SECTION */}
-            <Animated.View entering={FadeInUp.delay(600)} style={styles.section}>
+            <Animated.View
+              entering={FadeInUp.delay(600)}
+              style={styles.section}
+            >
               <View style={styles.setsHeader}>
                 <Text style={styles.label}>
                   <Text style={styles.labelIcon}>🏋️ </Text>
-                  {i18n.t("sets") || "Sets"}
+                  {i18n.t("sets")}
                 </Text>
                 <TouchableOpacity style={styles.addSetBtn} onPress={addSet}>
-                  <Text style={styles.addSetBtnText}>+ Add Set</Text>
+                  <Text style={styles.addSetBtnText}>
+                    + {i18n.t("add_set") || "Add Set"}
+                  </Text>
                 </TouchableOpacity>
               </View>
 
               {sets.length === 0 ? (
                 <Animated.View entering={FadeIn} style={styles.emptyContainer}>
                   <Text style={styles.emptyIcon}>🏋️</Text>
-                  <Text style={styles.emptyTitle}>No sets yet</Text>
+                  <Text style={styles.emptyTitle}>
+                    {i18n.t("no_sets") || "No sets yet"}
+                  </Text>
                   <Text style={styles.emptySubtitle}>
-                    Tap "+ Add Set" to start tracking
+                    {i18n.t("tap_add_set") || "Tap + Add Set to begin"}
                   </Text>
                 </Animated.View>
               ) : (
@@ -405,7 +478,9 @@ export default function AddExercise() {
                     key={item.id}
                     item={item}
                     index={index}
-                    onUpdate={(field, value) => updateSet(index, field, value)}
+                    onUpdate={(field, value) =>
+                      updateSet(index, field, value)
+                    }
                     onDelete={() => deleteSet(index)}
                   />
                 ))
@@ -414,11 +489,14 @@ export default function AddExercise() {
 
             {/* SAVE BUTTON */}
             {sets.length > 0 && (
-              <Animated.View entering={FadeIn.delay(800)} style={styles.saveButtonContainer}>
+              <Animated.View
+                entering={FadeIn.delay(800)}
+                style={styles.saveButtonContainer}
+              >
                 <TouchableOpacity
                   style={[
                     styles.saveBtn,
-                    !exerciseName.trim() && styles.saveBtnDisabled
+                    !exerciseName.trim() && styles.saveBtnDisabled,
                   ]}
                   onPress={saveExercise}
                   disabled={!exerciseName.trim() || isLoading}
@@ -426,18 +504,21 @@ export default function AddExercise() {
                   <LinearGradient
                     colors={
                       !exerciseName.trim()
-                        ? ['#2A2C2E', '#1A1C1E']
-                        : ['#4ADE80', '#22C55E']
+                        ? ["#2A2C2E", "#1A1C1E"]
+                        : ["#4ADE80", "#22C55E"]
                     }
                     style={styles.saveBtnGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
                   >
-                    <Text style={[
-                      styles.saveBtnText,
-                      !exerciseName.trim() && styles.saveBtnTextDisabled
-                    ]}>
-                      {isLoading ? "⏳ Saving..." : `💾 ${i18n.t("save") || "Save Exercise"}`}
+                    <Text
+                      style={[
+                        styles.saveBtnText,
+                        !exerciseName.trim() &&
+                          styles.saveBtnTextDisabled,
+                      ]}
+                    >
+                      {isLoading
+                        ? "⏳ " + i18n.t("saving")
+                        : "💾 " + i18n.t("save")}
                     </Text>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -450,138 +531,100 @@ export default function AddExercise() {
   );
 }
 
+/* ===========================================
+   🎨 STYLES
+=========================================== */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#0A0B0D",
   },
-
-  scrollView: {
-    flex: 1,
-  },
-
+  scrollView: { flex: 1 },
   scrollContent: {
     padding: 20,
     paddingTop: 60,
     paddingBottom: 40,
   },
-
   header: {
     marginBottom: 32,
   },
-
   headerSubtext: {
     color: "#6E7178",
     fontSize: 14,
     fontWeight: "600",
     marginBottom: 4,
     letterSpacing: 1.5,
-    textTransform: "uppercase",
   },
-
   title: {
     fontSize: 36,
     fontWeight: "700",
     color: "white",
-    letterSpacing: -0.5,
   },
+  section: { marginBottom: 32 },
 
-  section: {
-    marginBottom: 32,
-  },
-
+  /* LABELS */
   label: {
     fontSize: 18,
     fontWeight: "700",
     color: "white",
     marginBottom: 12,
   },
+  labelIcon: { fontSize: 20 },
 
-  labelIcon: {
-    fontSize: 20,
-  },
-
-  // PHOTO STYLES
+  /* PHOTO */
   photoCard: {
     backgroundColor: "#1A1C1E",
     borderRadius: 20,
     padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 5,
   },
-
   photoEmptyState: {
     alignItems: "center",
     paddingVertical: 32,
   },
-
   photoEmptyIcon: {
     fontSize: 64,
     marginBottom: 16,
   },
-
   photoEmptyText: {
     color: "#6E7178",
     fontSize: 16,
     fontWeight: "600",
   },
-
   photoButtons: {
     flexDirection: "row",
     gap: 12,
   },
-
   photoBtn: {
     flex: 1,
     borderRadius: 12,
     overflow: "hidden",
-    shadowColor: "#667EEA",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
   },
-
   photoBtnGradient: {
     paddingVertical: 16,
     alignItems: "center",
     gap: 8,
   },
-
   photoBtnIcon: {
     fontSize: 24,
   },
-
   photoBtnText: {
     color: "white",
     fontSize: 14,
     fontWeight: "700",
   },
-
   imagePreviewContainer: {
     position: "relative",
     borderRadius: 20,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 10,
   },
-
   preview: {
     width: "100%",
     height: 220,
     resizeMode: "cover",
   },
-
   previewOverlay: {
     ...StyleSheet.absoluteFillObject,
   },
-
   photoActionsOverlay: {
     position: "absolute",
     bottom: 16,
@@ -590,45 +633,38 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
   },
-
   overlayBtn: {
     flex: 1,
     backgroundColor: "rgba(255,255,255,0.25)",
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: "center",
-    backdropFilter: "blur(10px)",
   },
-
   overlayBtnText: {
     color: "white",
     fontSize: 14,
     fontWeight: "700",
   },
 
-  // NAME INPUT
+  /* NAME INPUT */
   inputContainer: {
     backgroundColor: "#1A1C1E",
     borderRadius: 16,
     borderWidth: 2,
     borderColor: "#2A2C2E",
   },
-
   nameInput: {
     padding: 18,
     fontSize: 16,
     color: "white",
-    fontWeight: "500",
   },
 
-  // SETS SECTION
+  /* SET CARD */
   setsHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
   },
-
   addSetBtn: {
     backgroundColor: "#1A1C1E",
     paddingHorizontal: 16,
@@ -637,13 +673,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#667EEA",
   },
-
   addSetBtnText: {
     color: "#667EEA",
     fontSize: 14,
     fontWeight: "700",
   },
-
   setCard: {
     backgroundColor: "#1A1C1E",
     borderRadius: 16,
@@ -652,34 +686,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
     minHeight: 88,
   },
-
   setIndexContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
     overflow: "hidden",
   },
-
   setIndexGradient: {
-    width: "100%",
-    height: "100%",
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-
   setIndex: {
     color: "white",
     fontSize: 16,
     fontWeight: "700",
   },
-
   inputGroup: {
     flex: 1,
     flexDirection: "row",
@@ -689,37 +713,26 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 12,
   },
-
   inputWrapper: {
     flex: 1,
     alignItems: "center",
   },
-
   inputLabel: {
     color: "#6E7178",
     fontSize: 11,
-    fontWeight: "600",
     marginBottom: 4,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
   },
-
   input: {
     color: "white",
     fontSize: 20,
     fontWeight: "700",
     textAlign: "center",
-    padding: 0,
-    minWidth: 40,
   },
-
   inputUnit: {
     color: "#6E7178",
     fontSize: 12,
-    fontWeight: "600",
     marginTop: 2,
   },
-
   inputDivider: {
     width: 1,
     height: 40,
@@ -729,29 +742,65 @@ const styles = StyleSheet.create({
   dateContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(102, 126, 234, 0.15)",
+    backgroundColor: "rgba(102,126,234,0.15)",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
     gap: 4,
   },
-
-  dateIcon: {
-    fontSize: 12,
-  },
-
+  dateIcon: { fontSize: 12 },
   dateText: {
     color: "#667EEA",
     fontSize: 11,
     fontWeight: "700",
   },
 
-  // DELETE SWIPE
+  /* EMPTY STATE */
+  emptyContainer: {
+    alignItems: "center",
+    paddingVertical: 40,
+  },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    color: "white",
+    fontSize: 20,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    color: "#6E7178",
+    fontSize: 14,
+  },
+
+  /* SAVE BUTTON */
+  saveButtonContainer: { marginTop: 20 },
+  saveBtn: {
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  saveBtnDisabled: {
+    opacity: 0.5,
+  },
+  saveBtnGradient: {
+    paddingVertical: 20,
+    alignItems: "center",
+  },
+  saveBtnText: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  saveBtnTextDisabled: {
+    color: "#6E7178",
+  },
+
+  /* SWIPE DELETE */
   deleteSwipeContainer: {
     justifyContent: "center",
     height: 88,
   },
-
   deleteSwipe: {
     height: 88,
     width: 100,
@@ -759,100 +808,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 16,
     marginLeft: 8,
-    overflow: 'hidden',
-    shadowColor: "#FF3B30",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 8,
+    overflow: "hidden",
   },
-
   deleteGradient: {
-    width: "100%",
-    height: "100%",
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
     gap: 6,
   },
-
   deleteIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.25)",
+    backgroundColor: "rgba(255,255,255,0.25)",
     justifyContent: "center",
     alignItems: "center",
   },
-
   deleteIcon: {
     color: "white",
     fontSize: 20,
     fontWeight: "700",
   },
-
   deleteText: {
     color: "white",
     fontSize: 14,
     fontWeight: "700",
-    letterSpacing: 0.5,
-  },
-
-  // EMPTY STATE
-  emptyContainer: {
-    alignItems: "center",
-    paddingVertical: 40,
-  },
-
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-
-  emptyTitle: {
-    color: "white",
-    fontSize: 20,
-    fontWeight: "600",
-    marginBottom: 8,
-    textAlign: "center",
-  },
-
-  emptySubtitle: {
-    color: "#6E7178",
-    fontSize: 14,
-    textAlign: "center",
-  },
-
-  // SAVE BUTTON
-  saveButtonContainer: {
-    marginTop: 20,
-  },
-
-  saveBtn: {
-    borderRadius: 16,
-    overflow: "hidden",
-    shadowColor: "#4ADE80",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-
-  saveBtnDisabled: {
-    shadowOpacity: 0,
-  },
-
-  saveBtnGradient: {
-    paddingVertical: 20,
-    alignItems: "center",
-  },
-
-  saveBtnText: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "700",
-  },
-
-  saveBtnTextDisabled: {
-    color: "#6E7178",
   },
 });

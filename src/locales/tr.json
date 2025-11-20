@@ -32,7 +32,6 @@
   "new_exercise": "Yeni Egzersiz",
   "no_photo_selected": "Henüz fotoğraf seçilmedi",
   "select_from_gallery": "Galeriden Seç",
-  "take_photo_again": "Kamerayla Çek",
   "exercise_name_placeholder": "Egzersiz Adı (örn: Bench Press)",
   "kg": "Kg",
   "reps": "Tekrar",
@@ -42,8 +41,26 @@
 
   "home": "Anasayfa",
   "profile": "Profil",
-
+  
   "edit_workout": "Antrenmanı Düzenle",
-  "workout_name_required": "Lütfen antrenman adını girin."
+  "workout_name_required": "Lütfen antrenman adını girin.",
 
+  /* PROFILE PAGE */
+  "manage_preferences": "Tercihlerini yönet",
+  "current_language": "Geçerli Dil",
+  "active": "Aktif",
+  "settings": "Ayarlar",
+  "notifications": "Bildirimler",
+  "notifications_desc": "Antrenman hatırlatıcılarını yönet",
+  "statistics": "İstatistikler",
+  "statistics_desc": "İlerlemeni görüntüle",
+  "theme": "Tema",
+  "theme_desc": "Görünümü özelleştir",
+  "about": "Hakkında",
+  "version": "Sürüm",
+  "made_with_love": "❤️ ile yapıldı",
+  "language_changed": "Dil {{lang}} olarak değiştirildi",
+  "ok": "Tamam",
+
+  "back": "Geri"
 }

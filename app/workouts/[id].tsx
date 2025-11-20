@@ -1,7 +1,7 @@
 import i18n from "@/src/locales";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -281,6 +281,32 @@ export default function WorkoutDetail() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      {/* CUSTOM HEADER */}
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          headerTitle: workout?.name || i18n.t("workouts"),
+          headerStyle: {
+            backgroundColor: '#0A0B0D',
+          },
+          headerTintColor: '#667EEA',
+          headerTitleStyle: {
+            fontWeight: '700',
+            fontSize: 18,
+            color: '#fff',
+          },
+          headerShadowVisible: false,
+          headerBackTitle: i18n.t("back") || 'Geri',
+          headerBackTitleStyle: {
+            fontSize: 16,
+            fontWeight: '600',
+          },
+          gestureEnabled: true,
+          gestureDirection: 'horizontal',
+          fullScreenGestureEnabled: true,
+        }}
+      />
+      
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
       
