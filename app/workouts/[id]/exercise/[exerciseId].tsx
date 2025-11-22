@@ -682,4 +682,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#0A0B0D",
   },
+
+    centerSwipe: {
+    height: 88,
+    width: 100,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 16,
+    marginLeft: 8,
+    overflow: 'hidden',
+    shadowColor: "#FF3B30",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 8,
+  },
 });
