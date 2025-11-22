@@ -37,18 +37,18 @@ export default function RootLayout() {
             fontWeight: "600",
             marginTop: 4,
           },
-          tabBarBackground: () => (
+          tabBarBackground: () =>
             Platform.OS === 'ios' ? (
               <BlurView
                 intensity={80}
                 tint="dark"
                 style={StyleSheet.absoluteFill}
               />
-            ) : null
-          ),
+            ) : null,
         }}
       >
-        {/* 🔥 Antrenmanlar (Home) */}
+
+        {/* 🔥 Home / Workouts */}
         <Tabs.Screen
           name="index"
           options={{
@@ -61,17 +61,41 @@ export default function RootLayout() {
                 {focused && (
                   <View style={styles.activeIndicator} />
                 )}
-                <Ionicons 
-                  name={focused ? "barbell" : "barbell-outline"} 
-                  size={28} 
-                  color={color} 
+                <Ionicons
+                  name={focused ? "barbell" : "barbell-outline"}
+                  size={28}
+                  color={color}
                 />
               </View>
             ),
           }}
         />
 
-        {/* 🔥 Profil */}
+        {/* 💦 Water Tracking */}
+        <Tabs.Screen
+          name="water"
+          options={{
+            title: t("water"),
+            tabBarIcon: ({ color, focused }) => (
+              <View style={[
+                styles.iconContainer,
+                focused && styles.iconContainerActive
+              ]}>
+                {focused && (
+                  <View style={styles.activeIndicator} />
+                )}
+
+                <Ionicons
+                  name={focused ? "water" : "water-outline"}
+                  size={26}
+                  color={color}
+                />
+              </View>
+            ),
+          }}
+        />
+
+        {/* 👤 Profile */}
         <Tabs.Screen
           name="profile"
           options={{
@@ -84,15 +108,16 @@ export default function RootLayout() {
                 {focused && (
                   <View style={styles.activeIndicator} />
                 )}
-                <Ionicons 
-                  name={focused ? "person" : "person-outline"} 
-                  size={26} 
-                  color={color} 
+                <Ionicons
+                  name={focused ? "person" : "person-outline"}
+                  size={26}
+                  color={color}
                 />
               </View>
             ),
           }}
         />
+
       </Tabs>
     </GestureHandlerRootView>
   );

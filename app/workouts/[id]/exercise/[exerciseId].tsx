@@ -1,7 +1,8 @@
+import i18n from "@/src/locales";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Alert,
   ImageBackground,
@@ -157,11 +158,46 @@ const AnimatedSetCard = ({
 export default function ExerciseDetail() {
   const { id, exerciseId } = useLocalSearchParams();
   const router = useRouter();
+  const navigation = useNavigation();
 
   const [workout, setWorkout] = useState<any>(null);
   const [exercise, setExercise] = useState<any>(null);
   const [sets, setSets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [langUpdate, setLangUpdate] = useState(0);
+
+  // Custom Header Setup
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerShown: true,
+      headerTitle: exercise?.name || i18n.t("exercises"),
+      headerStyle: {
+        backgroundColor: '#0A0B0D',
+      },
+      headerTintColor: '#667EEA',
+      headerTitleStyle: {
+        fontWeight: '700',
+        fontSize: 18,
+        color: '#fff',
+      },
+      headerShadowVisible: false,
+      headerBackTitle: i18n.t("back") || 'Geri',
+      headerBackTitleStyle: {
+        fontSize: 16,
+        fontWeight: '600',
+      },
+      gestureEnabled: true,
+      gestureDirection: 'horizontal',
+      fullScreenGestureEnabled: true,
+    });
+  }, [navigation, exercise, langUpdate]);
+
+  // Dil değişimi
+  useEffect(() => {
+    const handler = () => setLangUpdate((x) => x + 1);
+    i18n.on("languageChanged", handler);
+    return () => i18n.off("languageChanged", handler);
+  }, []);
 
   const load = async () => {
     setLoading(true);
@@ -681,20 +717,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#0A0B0D",
-  },
-
-    centerSwipe: {
-    height: 88,
-    width: 100,
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 16,
-    marginLeft: 8,
-    overflow: 'hidden',
-    shadowColor: "#FF3B30",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 8,
   },
 });

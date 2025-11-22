@@ -61,5 +61,25 @@
   "language_changed": "Language has been changed to {{lang}}",
   "ok": "OK",
 
-  "back": "Back"
+  "back": "Back",
+
+  "water": "Water",
+  "reset": "Reset",
+  "water_intake": "Water Intake",
+  "daily_goal": "Daily Goal",
+  "add": "Add",
+  "weekly_overview": "Weekly Overview",
+  "monthly_total": "Monthly Total",
+  "days_short": {
+    "mon": "Mon",
+    "tue": "Tue",
+    "wed": "Wed",
+    "thu": "Thu",
+    "fri": "Fri",
+    "sat": "Sat",
+    "sun": "Sun"
+}
+
+
+
 }

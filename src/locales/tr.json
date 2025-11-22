@@ -62,5 +62,25 @@
   "language_changed": "Dil {{lang}} olarak değiştirildi",
   "ok": "Tamam",
 
-  "back": "Geri"
+  "back": "Geri",
+
+  "water": "Su",
+  "water_intake": "Su Tüketimi",
+  "add": "Ekle",
+  "reset": "Sıfırla",
+  "daily_goal": "Günlük Hedef",
+  "weekly_overview": "Haftalık Görünüm",
+  "monthly_total": "Aylık Toplam",
+  "days_short": {
+    "mon": "Pzt",
+    "tue": "Sal",
+    "wed": "Çar",
+    "thu": "Per",
+    "fri": "Cum",
+    "sat": "Cmt",
+    "sun": "Paz"
+}
+
+
+
 }
