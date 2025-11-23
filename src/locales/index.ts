@@ -16,8 +16,16 @@ export const loadLanguage = async () => {
   const saved = await AsyncStorage.getItem("APP_LANG");
   if (saved) return saved;
 
-  const deviceLang = Localization.locale.split("-")[0];
-  return deviceLang === "tr" ? "tr" : "en";
+  // use the available expo-localization sync API in a typesafe way
+  try {
+    // expo-localization provides locale and locales on the module (no getLocalizationAsync in types)
+    const locInfo = Localization as unknown as { locale?: string; locales?: { languageTag: string }[] };
+    const locale = locInfo.locale ?? locInfo.locales?.[0]?.languageTag ?? "en";
+    const deviceLang = locale.split("-")[0];
+    return deviceLang === "tr" ? "tr" : "en";
+  } catch {
+    return "en";
+  }
 };
 
 // 📌 i18n anında initialize edilir — async OLMAYACAK!
@@ -25,7 +33,7 @@ i18n.use(initReactI18next).init({
   resources,
   lng: "en",          // geçici
   fallbackLng: "en",
-  compatibilityJSON: "v3",
+  compatibilityJSON: "v4",
   interpolation: { escapeValue: false }
 });
 
