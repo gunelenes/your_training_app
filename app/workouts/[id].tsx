@@ -299,7 +299,6 @@ export default function WorkoutDetail() {
           headerBackTitle: i18n.t("back") || 'Geri',
           headerBackTitleStyle: {
             fontSize: 16,
-            fontWeight: '600',
           },
           gestureEnabled: true,
           gestureDirection: 'horizontal',

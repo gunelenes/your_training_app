@@ -103,7 +103,7 @@ export default function EditWorkout() {
           },
           headerShadowVisible: false,
           headerBackTitle: i18n.t("back") || "Back",
-          headerBackTitleStyle: { color: "#667EEA", fontWeight: "600" },
+          headerBackTitleStyle: { fontSize: 14 },
           gestureEnabled: true,
           fullScreenGestureEnabled: true,
         }}

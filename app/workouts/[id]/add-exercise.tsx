@@ -312,7 +312,6 @@ export default function AddExercise() {
           headerBackTitle: i18n.t("back") || "Back",
           headerBackTitleStyle: {
             fontSize: 16,
-            fontWeight: "600",
           },
           gestureEnabled: true,
           gestureDirection: "horizontal",
