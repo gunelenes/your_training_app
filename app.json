@@ -1,17 +1,24 @@
 {
   "expo": {
-    "name": "your_training_app",
-    "slug": "your_training_app",
-    "version": "1.0.0",
+    "name": "Your Training App",
+    "slug": "yourtrainingapp",
+    "version": "1.1.2",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/logo.png",
     "scheme": "yourtrainingapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "com.enesgunel.yourtrainingapp",
+      "supportsTablet": false,
+      "buildNumber": "5",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "icon": "./assets/images/logo.png"
     },
     "android": {
+      "package": "com.enesgunel.yourtrainingapp",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -19,7 +26,9 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "versionCode": 4,
+      "icon": "./assets/images/logo.png"
     },
     "web": {
       "output": "static",
@@ -45,6 +54,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "0257c49a-a3e6-475e-addb-62d3cb053cc9"
+      }
+    },
+    "owner": "enesgunel"
   }
 }
