@@ -1,4 +1,9 @@
-import { addExercise, type ExerciseSet } from "@/src/lib/storage";
+import ExerciseAutocomplete from "@/components/exercise-autocomplete";
+import RestTimer from "@/components/rest-timer";
+import { theme } from "@/constants/theme";
+import { inferMuscleGroup, MUSCLE_GROUP_META } from "@/src/lib/exercise-library";
+import { hapticError, hapticSuccess, hapticTap } from "@/src/lib/haptics";
+import { addExercise, type ExerciseSet, type MuscleGroup } from "@/src/lib/storage";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
@@ -19,83 +24,51 @@ import {
   View,
 } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
-import Animated, {
-  FadeIn,
-  FadeInUp,
-  SlideInLeft,
-} from "react-native-reanimated";
+import Animated, { FadeIn, FadeInUp, SlideInLeft } from "react-native-reanimated";
 
-const AnimatedSetCard = ({
+const SetCard = ({
   item,
   index,
   onUpdate,
   onDelete,
+  onDone,
 }: {
   item: ExerciseSet;
   index: number;
-  onUpdate: (field: "weight" | "reps", value: string) => void;
+  onUpdate: (field: "weight" | "reps" | "note", value: string) => void;
   onDelete: () => void;
+  onDone: () => void;
 }) => {
   const { t } = useTranslation();
   const swipeableRef = useRef<Swipeable>(null);
+  const [showNote, setShowNote] = useState(!!item.note);
 
-  const renderRightActions = (_progress: RNAnimated.AnimatedInterpolation<number>, dragX: RNAnimated.AnimatedInterpolation<number>) => {
-    const scale = dragX.interpolate({
-      inputRange: [-100, 0],
-      outputRange: [1, 0.5],
-      extrapolate: "clamp",
-    });
-
+  const renderRightActions = (
+    _p: RNAnimated.AnimatedInterpolation<number>,
+    dragX: RNAnimated.AnimatedInterpolation<number>
+  ) => {
     const opacity = dragX.interpolate({
       inputRange: [-100, -50, 0],
       outputRange: [1, 0.7, 0],
       extrapolate: "clamp",
     });
-
     return (
-      <RNAnimated.View
-        style={[
-          styles.deleteSwipeContainer,
-          { opacity, transform: [{ scale }] },
-        ]}
-      >
+      <RNAnimated.View style={[{ justifyContent: "center" }, { opacity }]}>
         <TouchableOpacity
           onPress={() => {
             Alert.alert(
               t("delete_set_title"),
               t("delete_set_confirm"),
               [
-                {
-                  text: t("cancel"),
-                  style: "cancel",
-                  onPress: () => swipeableRef.current?.close(),
-                },
-                {
-                  text: t("delete"),
-                  style: "destructive",
-                  onPress: onDelete,
-                },
+                { text: t("cancel"), style: "cancel", onPress: () => swipeableRef.current?.close() },
+                { text: t("delete"), style: "destructive", onPress: onDelete },
               ],
-              {
-                cancelable: true,
-                userInterfaceStyle: "dark",
-              }
+              { cancelable: true, userInterfaceStyle: "dark" }
             );
           }}
-          style={styles.deleteSwipe}
-          activeOpacity={0.7}
+          style={styles.deleteBox}
         >
-          <LinearGradient
-            colors={["#FF3B30", "#C62828"]}
-            style={styles.deleteGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.deleteIconContainer}>
-              <Text style={styles.deleteIcon}>✕</Text>
-            </View>
-            <Text style={styles.deleteText}>{t("delete")}</Text>
-          </LinearGradient>
+          <Text style={styles.deleteIcon}>✕</Text>
         </TouchableOpacity>
       </RNAnimated.View>
     );
@@ -103,57 +76,61 @@ const AnimatedSetCard = ({
 
   return (
     <Animated.View entering={SlideInLeft.delay(50 * index)}>
-      <Swipeable
-        ref={swipeableRef}
-        overshootRight={false}
-        renderRightActions={renderRightActions}
-        friction={2}
-        rightThreshold={40}
-      >
+      <Swipeable ref={swipeableRef} overshootRight={false} renderRightActions={renderRightActions} friction={2} rightThreshold={40}>
         <View style={styles.setCard}>
-          <View style={styles.setIndexContainer}>
-            <LinearGradient
-              colors={["#667EEA", "#764BA2"]}
-              style={styles.setIndexGradient}
-            >
+          <View style={styles.setRow}>
+            <View style={styles.setIndexBadge}>
               <Text style={styles.setIndex}>{index + 1}</Text>
-            </LinearGradient>
-          </View>
+            </View>
 
-          <View style={styles.inputGroup}>
-            <View style={styles.inputWrapper}>
-              <Text style={styles.inputLabel}>{t("kg")}</Text>
+            <View style={styles.setInputBox}>
+              <Text style={styles.setInputLabel}>{t("kg")}</Text>
               <TextInput
-                style={styles.input}
+                style={styles.setInputField}
                 placeholder="0"
-                placeholderTextColor="#6E7178"
+                placeholderTextColor={theme.color.textDim}
                 keyboardType="numeric"
                 value={item.weight}
                 onChangeText={(v) => onUpdate("weight", v)}
               />
-              <Text style={styles.inputUnit}>kg</Text>
             </View>
 
-            <View style={styles.inputDivider} />
+            <Text style={styles.mult}>×</Text>
 
-            <View style={styles.inputWrapper}>
-              <Text style={styles.inputLabel}>{t("reps")}</Text>
+            <View style={styles.setInputBox}>
+              <Text style={styles.setInputLabel}>{t("reps")}</Text>
               <TextInput
-                style={styles.input}
+                style={styles.setInputField}
                 placeholder="0"
-                placeholderTextColor="#6E7178"
+                placeholderTextColor={theme.color.textDim}
                 keyboardType="numeric"
                 value={item.reps}
                 onChangeText={(v) => onUpdate("reps", v)}
               />
-              <Text style={styles.inputUnit}>x</Text>
             </View>
+
+            <TouchableOpacity onPress={onDone} style={styles.doneBtn}>
+              <Text style={styles.doneBtnText}>✓</Text>
+            </TouchableOpacity>
           </View>
 
-          <View style={styles.dateContainer}>
-            <Text style={styles.dateIcon}>📅</Text>
-            <Text style={styles.dateText}>{item.date}</Text>
+          <View style={styles.setFooter}>
+            <Text style={styles.setDate}>{item.date}</Text>
+            <TouchableOpacity onPress={() => setShowNote((v) => !v)}>
+              <Text style={styles.noteToggle}>{showNote ? "−" : "+"} {t("note")}</Text>
+            </TouchableOpacity>
           </View>
+
+          {showNote && (
+            <TextInput
+              style={styles.noteInput}
+              placeholder={t("note_placeholder")}
+              placeholderTextColor={theme.color.textDim}
+              value={item.note || ""}
+              onChangeText={(v) => onUpdate("note", v)}
+              multiline
+            />
+          )}
         </View>
       </Swipeable>
     </Animated.View>
@@ -166,20 +143,15 @@ export default function AddExercise() {
   const { t } = useTranslation();
 
   const [exerciseName, setExerciseName] = useState("");
+  const [muscleGroup, setMuscleGroup] = useState<MuscleGroup>("other");
   const [sets, setSets] = useState<ExerciseSet[]>([]);
   const [exerciseImage, setExerciseImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [timerVisible, setTimerVisible] = useState(false);
 
   const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      quality: 0.7,
-      allowsEditing: true,
-      aspect: [16, 9],
-    });
-
-    if (!result.canceled) {
-      setExerciseImage(result.assets[0].uri);
-    }
+    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.7, allowsEditing: true, aspect: [16, 9] });
+    if (!result.canceled) setExerciseImage(result.assets[0].uri);
   };
 
   const takePhoto = async () => {
@@ -188,72 +160,58 @@ export default function AddExercise() {
       Alert.alert(t("camera_permission"));
       return;
     }
-
-    const result = await ImagePicker.launchCameraAsync({
-      quality: 0.7,
-      allowsEditing: true,
-      aspect: [16, 9],
-    });
-
-    if (!result.canceled) {
-      setExerciseImage(result.assets[0].uri);
-    }
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.7, allowsEditing: true, aspect: [16, 9] });
+    if (!result.canceled) setExerciseImage(result.assets[0].uri);
   };
 
   const addSet = () => {
+    hapticTap();
     setSets((prev) => [
       ...prev,
       {
         id: Date.now().toString(),
-        weight: "",
-        reps: "",
+        weight: prev[prev.length - 1]?.weight ?? "",
+        reps: prev[prev.length - 1]?.reps ?? "",
         date: new Date().toISOString().split("T")[0],
       },
     ]);
   };
 
-  const updateSet = (index: number, field: "weight" | "reps", value: string) => {
-    setSets((prev) =>
-      prev.map((s, i) => (i === index ? { ...s, [field]: value } : s))
-    );
+  const updateSet = (index: number, field: "weight" | "reps" | "note", value: string) => {
+    setSets((prev) => prev.map((s, i) => (i === index ? { ...s, [field]: value } : s)));
   };
 
   const deleteSet = (index: number) => {
+    hapticTap();
     setSets((prev) => prev.filter((_, i) => i !== index));
   };
 
   const saveExercise = async () => {
     if (!exerciseName) {
-      Alert.alert(
-        t("exercise_name_required_title"),
-        t("exercise_name_required")
-      );
+      hapticError();
+      Alert.alert(t("exercise_name_required_title"), t("exercise_name_required"));
       return;
     }
-
     if (sets.length === 0) {
-      Alert.alert(
-        t("no_sets_title"),
-        t("at_least_one_set")
-      );
+      hapticError();
+      Alert.alert(t("no_sets_title"), t("at_least_one_set"));
       return;
     }
 
     setIsLoading(true);
-
     await addExercise(id, {
       id: Date.now().toString(),
       name: exerciseName,
       image: exerciseImage,
+      muscleGroup,
       sets,
     });
-
+    hapticSuccess();
     setIsLoading(false);
-
-    Alert.alert("✅", t("exercise_saved"), [
-      { text: t("ok"), onPress: () => router.back() },
-    ]);
+    Alert.alert("✅", t("exercise_saved"), [{ text: t("ok"), onPress: () => router.back() }]);
   };
+
+  const meta = MUSCLE_GROUP_META[muscleGroup];
 
   return (
     <>
@@ -261,523 +219,343 @@ export default function AddExercise() {
         options={{
           headerShown: true,
           headerTitle: t("new_exercise"),
-          headerStyle: {
-            backgroundColor: "#0A0B0D",
-          },
-          headerTintColor: "#667EEA",
-          headerTitleStyle: {
-            fontWeight: "700",
-            fontSize: 18,
-            color: "#fff",
-          },
+          headerStyle: { backgroundColor: theme.color.bg },
+          headerTintColor: theme.color.accent,
+          headerTitleStyle: { fontWeight: "700", fontSize: 18, color: theme.color.text },
           headerShadowVisible: false,
           headerBackTitle: t("back"),
-          headerBackTitleStyle: {
-            fontSize: 16,
-          },
           gestureEnabled: true,
-          gestureDirection: "horizontal",
-          fullScreenGestureEnabled: true,
         }}
       />
 
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
 
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <ScrollView
-            style={styles.scrollView}
+            style={{ flex: 1 }}
             contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <Animated.View
-              entering={FadeInUp.duration(600)}
-              style={styles.header}
-            >
-              <Text style={styles.headerSubtext}>
-                {t("new_exercise")}
-              </Text>
-              <Text style={styles.title}>
-                {t("new_exercise")}
-              </Text>
+            <Animated.View entering={FadeInUp.duration(500)}>
+              <Text style={styles.headerLabel}>{t("new_exercise")}</Text>
+              <Text style={styles.title}>{t("new_exercise")}</Text>
             </Animated.View>
 
-            <Animated.View entering={FadeInUp.delay(200)} style={styles.section}>
-              <Text style={styles.label}>
-                <Text style={styles.labelIcon}>📸 </Text>
-                {t("select_photo")}
-              </Text>
-
+            {/* Photo */}
+            <Animated.View entering={FadeInUp.delay(150)} style={styles.section}>
               {exerciseImage ? (
-                <View style={styles.imagePreviewContainer}>
-                  <Image
-                    source={{ uri: exerciseImage }}
-                    style={styles.preview}
-                  />
-                  <LinearGradient
-                    colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.7)"]}
-                    style={styles.previewOverlay}
-                  />
-                  <View style={styles.photoActionsOverlay}>
-                    <TouchableOpacity
-                      style={styles.overlayBtn}
-                      onPress={pickImage}
-                    >
-                      <Text style={styles.overlayBtnText}>
-                        🖼️ {t("select_from_gallery")}
-                      </Text>
+                <View style={styles.imgWrap}>
+                  <Image source={{ uri: exerciseImage }} style={styles.imgPreview} />
+                  <LinearGradient colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.7)"]} style={StyleSheet.absoluteFillObject} />
+                  <View style={styles.imgActions}>
+                    <TouchableOpacity onPress={pickImage} style={styles.imgActionBtn}>
+                      <Text style={styles.imgActionText}>🖼️ {t("select_from_gallery")}</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.overlayBtn}
-                      onPress={takePhoto}
-                    >
-                      <Text style={styles.overlayBtnText}>
-                        📸 {t("take_photo")}
-                      </Text>
+                    <TouchableOpacity onPress={takePhoto} style={styles.imgActionBtn}>
+                      <Text style={styles.imgActionText}>📸 {t("take_photo")}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
               ) : (
-                <View style={styles.photoCard}>
-                  <View style={styles.photoEmptyState}>
-                    <Text style={styles.photoEmptyIcon}>📷</Text>
-                    <Text style={styles.photoEmptyText}>
-                      {t("no_photo_selected")}
-                    </Text>
-                  </View>
-
-                  <View style={styles.photoButtons}>
-                    <TouchableOpacity
-                      style={styles.photoBtn}
-                      onPress={pickImage}
-                    >
-                      <LinearGradient
-                        colors={["#667EEA", "#764BA2"]}
-                        style={styles.photoBtnGradient}
-                      >
-                        <Text style={styles.photoBtnIcon}>🖼️</Text>
-                        <Text style={styles.photoBtnText}>
-                          {t("select_from_gallery")}
-                        </Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.photoBtn}
-                      onPress={takePhoto}
-                    >
-                      <LinearGradient
-                        colors={["#4ADE80", "#22C55E"]}
-                        style={styles.photoBtnGradient}
-                      >
-                        <Text style={styles.photoBtnIcon}>📸</Text>
-                        <Text style={styles.photoBtnText}>
-                          {t("take_photo")}
-                        </Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  </View>
+                <View style={styles.photoRow}>
+                  <TouchableOpacity onPress={pickImage} style={styles.photoBtn}>
+                    <Text style={styles.photoIcon}>🖼️</Text>
+                    <Text style={styles.photoText}>{t("select_from_gallery")}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={takePhoto} style={styles.photoBtn}>
+                    <Text style={styles.photoIcon}>📸</Text>
+                    <Text style={styles.photoText}>{t("take_photo")}</Text>
+                  </TouchableOpacity>
                 </View>
               )}
             </Animated.View>
 
-            <Animated.View
-              entering={FadeInUp.delay(400)}
-              style={styles.section}
-            >
-              <Text style={styles.label}>
-                <Text style={styles.labelIcon}>💪 </Text>
-                {t("exercise_name")}
-              </Text>
-              <View style={styles.inputContainer}>
+            {/* Name + autocomplete */}
+            <Animated.View entering={FadeInUp.delay(300)} style={styles.section}>
+              <Text style={styles.label}>{t("exercise_name")}</Text>
+              <View style={styles.nameInputWrap}>
                 <TextInput
                   style={styles.nameInput}
                   placeholder={t("exercise_name_placeholder")}
-                  placeholderTextColor="#6E7178"
+                  placeholderTextColor={theme.color.textDim}
                   value={exerciseName}
-                  onChangeText={setExerciseName}
+                  onChangeText={(v) => {
+                    setExerciseName(v);
+                    setMuscleGroup(inferMuscleGroup(v));
+                  }}
                 />
+                <View style={[styles.groupChip, { backgroundColor: meta.color + "20" }]}>
+                  <Text style={[styles.groupChipText, { color: meta.color }]}>
+                    {meta.emoji} {t(`muscle_${muscleGroup}`)}
+                  </Text>
+                </View>
               </View>
+              <ExerciseAutocomplete
+                query={exerciseName}
+                onSelect={(ex) => {
+                  setExerciseName(ex.name);
+                  setMuscleGroup(ex.muscleGroup);
+                }}
+              />
             </Animated.View>
 
-            <Animated.View
-              entering={FadeInUp.delay(600)}
-              style={styles.section}
-            >
+            {/* Sets */}
+            <Animated.View entering={FadeInUp.delay(450)} style={styles.section}>
               <View style={styles.setsHeader}>
-                <Text style={styles.label}>
-                  <Text style={styles.labelIcon}>🏋️ </Text>
-                  {t("sets")}
-                </Text>
+                <Text style={styles.label}>{t("sets")}</Text>
                 <TouchableOpacity style={styles.addSetBtn} onPress={addSet}>
-                  <Text style={styles.addSetBtnText}>
-                    + {t("add_set")}
-                  </Text>
+                  <Text style={styles.addSetBtnText}>+ {t("add_set")}</Text>
                 </TouchableOpacity>
               </View>
 
               {sets.length === 0 ? (
-                <Animated.View entering={FadeIn} style={styles.emptyContainer}>
+                <Animated.View entering={FadeIn} style={styles.emptyBox}>
                   <Text style={styles.emptyIcon}>🏋️</Text>
-                  <Text style={styles.emptyTitle}>
-                    {t("no_sets")}
-                  </Text>
-                  <Text style={styles.emptySubtitle}>
-                    {t("tap_add_set")}
-                  </Text>
+                  <Text style={styles.emptyTitle}>{t("no_sets")}</Text>
+                  <Text style={styles.emptySub}>{t("tap_add_set")}</Text>
                 </Animated.View>
               ) : (
                 sets.map((item, index) => (
-                  <AnimatedSetCard
+                  <SetCard
                     key={item.id}
                     item={item}
                     index={index}
-                    onUpdate={(field, value) =>
-                      updateSet(index, field, value)
-                    }
+                    onUpdate={(f, v) => updateSet(index, f, v)}
                     onDelete={() => deleteSet(index)}
+                    onDone={() => setTimerVisible(true)}
                   />
                 ))
               )}
             </Animated.View>
 
             {sets.length > 0 && (
-              <Animated.View
-                entering={FadeIn.delay(800)}
-                style={styles.saveButtonContainer}
-              >
+              <Animated.View entering={FadeIn.delay(600)} style={{ marginTop: theme.space.lg }}>
                 <TouchableOpacity
-                  style={[
-                    styles.saveBtn,
-                    !exerciseName.trim() && styles.saveBtnDisabled,
-                  ]}
+                  style={[styles.saveBtn, !exerciseName.trim() && styles.saveBtnDisabled]}
                   onPress={saveExercise}
                   disabled={!exerciseName.trim() || isLoading}
                 >
-                  <LinearGradient
-                    colors={
-                      !exerciseName.trim()
-                        ? ["#2A2C2E", "#1A1C1E"]
-                        : ["#4ADE80", "#22C55E"]
-                    }
-                    style={styles.saveBtnGradient}
-                  >
-                    <Text
-                      style={[
-                        styles.saveBtnText,
-                        !exerciseName.trim() &&
-                          styles.saveBtnTextDisabled,
-                      ]}
-                    >
-                      {isLoading
-                        ? "⏳ " + t("saving")
-                        : "💾 " + t("save")}
-                    </Text>
-                  </LinearGradient>
+                  <Text style={[styles.saveBtnText, !exerciseName.trim() && { color: theme.color.textMuted }]}>
+                    {isLoading ? "⏳ " + t("saving") : "💾 " + t("save")}
+                  </Text>
                 </TouchableOpacity>
               </Animated.View>
             )}
           </ScrollView>
         </KeyboardAvoidingView>
+
+        <RestTimer visible={timerVisible} initialSeconds={90} onClose={() => setTimerVisible(false)} />
       </View>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#0A0B0D",
-  },
-  scrollView: { flex: 1 },
-  scrollContent: {
-    padding: 20,
-    paddingTop: 60,
-    paddingBottom: 40,
-  },
-  header: {
-    marginBottom: 32,
-  },
-  headerSubtext: {
-    color: "#6E7178",
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 4,
+  container: { flex: 1, backgroundColor: theme.color.bg },
+  scrollContent: { padding: theme.space.xl, paddingTop: 40, paddingBottom: 60 },
+
+  headerLabel: {
+    color: theme.color.textMuted,
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.semibold,
     letterSpacing: 1.5,
+    textTransform: "uppercase",
   },
   title: {
-    fontSize: 36,
-    fontWeight: "700",
-    color: "white",
+    fontSize: theme.font.size.display,
+    fontWeight: theme.font.weight.bold,
+    color: theme.color.text,
+    marginBottom: theme.space.lg,
   },
-  section: { marginBottom: 32 },
+
+  section: { marginBottom: theme.space.xl },
 
   label: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "white",
-    marginBottom: 12,
+    color: theme.color.text,
+    fontSize: theme.font.size.md,
+    fontWeight: theme.font.weight.bold,
+    marginBottom: theme.space.sm,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
   },
-  labelIcon: { fontSize: 20 },
 
-  photoCard: {
-    backgroundColor: "#1A1C1E",
-    borderRadius: 20,
-    padding: 20,
-  },
-  photoEmptyState: {
-    alignItems: "center",
-    paddingVertical: 32,
-  },
-  photoEmptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  photoEmptyText: {
-    color: "#6E7178",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  photoButtons: {
+  photoRow: {
     flexDirection: "row",
-    gap: 12,
+    gap: theme.space.md,
   },
   photoBtn: {
     flex: 1,
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-  photoBtnGradient: {
-    paddingVertical: 16,
+    backgroundColor: theme.color.surface,
+    borderRadius: theme.radius.lg,
+    padding: theme.space.xl,
     alignItems: "center",
-    gap: 8,
+    gap: theme.space.sm,
   },
-  photoBtnIcon: {
-    fontSize: 24,
-  },
-  photoBtnText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  imagePreviewContainer: {
-    position: "relative",
-    borderRadius: 20,
-    overflow: "hidden",
-  },
-  preview: {
-    width: "100%",
-    height: 220,
-    resizeMode: "cover",
-  },
-  previewOverlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  photoActionsOverlay: {
-    position: "absolute",
-    bottom: 16,
-    left: 16,
-    right: 16,
-    flexDirection: "row",
-    gap: 12,
-  },
-  overlayBtn: {
-    flex: 1,
-    backgroundColor: "rgba(255,255,255,0.25)",
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  overlayBtnText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "700",
-  },
+  photoIcon: { fontSize: 32 },
+  photoText: { color: theme.color.text, fontSize: theme.font.size.sm, fontWeight: theme.font.weight.semibold },
 
-  inputContainer: {
-    backgroundColor: "#1A1C1E",
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: "#2A2C2E",
+  imgWrap: { borderRadius: theme.radius.lg, overflow: "hidden" },
+  imgPreview: { width: "100%", height: 200, resizeMode: "cover" },
+  imgActions: {
+    position: "absolute",
+    bottom: theme.space.md,
+    left: theme.space.md,
+    right: theme.space.md,
+    flexDirection: "row",
+    gap: theme.space.sm,
+  },
+  imgActionBtn: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    padding: theme.space.sm,
+    borderRadius: theme.radius.sm,
+    alignItems: "center",
+  },
+  imgActionText: { color: theme.color.text, fontSize: theme.font.size.xs, fontWeight: theme.font.weight.bold },
+
+  nameInputWrap: {
+    backgroundColor: theme.color.surface,
+    borderRadius: theme.radius.lg,
+    padding: theme.space.md,
+    gap: theme.space.sm,
   },
   nameInput: {
-    padding: 18,
-    fontSize: 16,
-    color: "white",
+    color: theme.color.text,
+    fontSize: theme.font.size.lg,
+    fontWeight: theme.font.weight.semibold,
+    paddingVertical: theme.space.sm,
+  },
+  groupChip: {
+    alignSelf: "flex-start",
+    paddingHorizontal: theme.space.sm,
+    paddingVertical: 4,
+    borderRadius: theme.radius.sm,
+  },
+  groupChipText: {
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.bold,
   },
 
   setsHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: theme.space.md,
   },
+
   addSetBtn: {
-    backgroundColor: "#1A1C1E",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#667EEA",
+    backgroundColor: theme.color.accentSoft,
+    paddingHorizontal: theme.space.lg,
+    paddingVertical: theme.space.sm,
+    borderRadius: theme.radius.md,
   },
   addSetBtnText: {
-    color: "#667EEA",
-    fontSize: 14,
-    fontWeight: "700",
+    color: theme.color.accent,
+    fontSize: theme.font.size.sm,
+    fontWeight: theme.font.weight.bold,
   },
+
   setCard: {
-    backgroundColor: "#1A1C1E",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: theme.color.surface,
+    borderRadius: theme.radius.lg,
+    padding: theme.space.md,
+    marginBottom: theme.space.md,
+  },
+  setRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    minHeight: 88,
+    gap: theme.space.sm,
   },
-  setIndexContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    overflow: "hidden",
-  },
-  setIndexGradient: {
-    flex: 1,
+  setIndexBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: theme.color.accent,
     justifyContent: "center",
     alignItems: "center",
   },
-  setIndex: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  inputGroup: {
+  setIndex: { color: theme.color.bg, fontSize: theme.font.size.md, fontWeight: theme.font.weight.bold },
+
+  setInputBox: {
     flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#0F1012",
-    borderRadius: 12,
-    padding: 12,
-    gap: 12,
-  },
-  inputWrapper: {
-    flex: 1,
+    backgroundColor: theme.color.surfaceMuted,
+    borderRadius: theme.radius.md,
+    padding: theme.space.sm,
     alignItems: "center",
   },
-  inputLabel: {
-    color: "#6E7178",
-    fontSize: 11,
-    marginBottom: 4,
+  setInputLabel: {
+    color: theme.color.textDim,
+    fontSize: 10,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginBottom: 2,
   },
-  input: {
-    color: "white",
-    fontSize: 20,
-    fontWeight: "700",
+  setInputField: {
+    color: theme.color.text,
+    fontSize: theme.font.size.xl,
+    fontWeight: theme.font.weight.bold,
     textAlign: "center",
+    padding: 0,
+    minWidth: 40,
   },
-  inputUnit: {
-    color: "#6E7178",
-    fontSize: 12,
-    marginTop: 2,
-  },
-  inputDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: "#2A2C2E",
-  },
+  mult: { color: theme.color.textDim, fontSize: theme.font.size.lg, fontWeight: theme.font.weight.bold },
 
-  dateContainer: {
+  doneBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: theme.color.accent,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  doneBtnText: { color: theme.color.bg, fontSize: theme.font.size.xl, fontWeight: theme.font.weight.bold },
+
+  setFooter: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "rgba(102,126,234,0.15)",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    gap: 4,
+    marginTop: theme.space.sm,
   },
-  dateIcon: { fontSize: 12 },
-  dateText: {
-    color: "#667EEA",
-    fontSize: 11,
-    fontWeight: "700",
+  setDate: { color: theme.color.textMuted, fontSize: theme.font.size.xs, fontWeight: theme.font.weight.semibold },
+  noteToggle: { color: theme.color.accent, fontSize: theme.font.size.sm, fontWeight: theme.font.weight.semibold },
+  noteInput: {
+    marginTop: theme.space.sm,
+    backgroundColor: theme.color.surfaceMuted,
+    borderRadius: theme.radius.sm,
+    padding: theme.space.sm,
+    color: theme.color.text,
+    fontSize: theme.font.size.sm,
+    minHeight: 40,
+    textAlignVertical: "top",
   },
 
-  emptyContainer: {
-    alignItems: "center",
-    paddingVertical: 40,
-  },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    color: "white",
-    fontSize: 20,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    color: "#6E7178",
-    fontSize: 14,
-  },
-
-  saveButtonContainer: { marginTop: 20 },
-  saveBtn: {
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-  saveBtnDisabled: {
-    opacity: 0.5,
-  },
-  saveBtnGradient: {
-    paddingVertical: 20,
-    alignItems: "center",
-  },
-  saveBtnText: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  saveBtnTextDisabled: {
-    color: "#6E7178",
-  },
-
-  deleteSwipeContainer: {
-    justifyContent: "center",
-    height: 88,
-  },
-  deleteSwipe: {
-    height: 88,
-    width: 100,
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 16,
+  deleteBox: {
     marginLeft: 8,
-    overflow: "hidden",
-  },
-  deleteGradient: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 6,
-  },
-  deleteIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.25)",
+    width: 80,
+    height: 90,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.color.danger,
     justifyContent: "center",
     alignItems: "center",
   },
-  deleteIcon: {
-    color: "white",
-    fontSize: 20,
-    fontWeight: "700",
+  deleteIcon: { color: theme.color.text, fontSize: theme.font.size.xl, fontWeight: theme.font.weight.bold },
+
+  emptyBox: {
+    alignItems: "center",
+    paddingVertical: 32,
   },
-  deleteText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "700",
+  emptyIcon: { fontSize: 40, marginBottom: theme.space.sm },
+  emptyTitle: { color: theme.color.text, fontSize: theme.font.size.lg, fontWeight: theme.font.weight.semibold },
+  emptySub: { color: theme.color.textMuted, fontSize: theme.font.size.sm, marginTop: 4 },
+
+  saveBtn: {
+    backgroundColor: theme.color.accent,
+    borderRadius: theme.radius.lg,
+    paddingVertical: theme.space.xl,
+    alignItems: "center",
   },
+  saveBtnDisabled: { backgroundColor: theme.color.surface },
+  saveBtnText: { color: theme.color.bg, fontSize: theme.font.size.lg, fontWeight: theme.font.weight.bold },
 });

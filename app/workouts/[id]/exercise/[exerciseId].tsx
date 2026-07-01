@@ -1,3 +1,7 @@
+import ProgressionChart from "@/components/progression-chart";
+import RestTimer from "@/components/rest-timer";
+import { theme } from "@/constants/theme";
+import { hapticSuccess, hapticTap } from "@/src/lib/haptics";
 import { getWorkout, updateExerciseSets, type Exercise, type ExerciseSet } from "@/src/lib/storage";
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
@@ -25,22 +29,27 @@ const AnimatedSetCard = ({
   index,
   onUpdate,
   onDelete,
+  onDone,
 }: {
   item: ExerciseSet;
   index: number;
-  onUpdate: (field: "weight" | "reps", value: string) => void;
+  onUpdate: (field: "weight" | "reps" | "note", value: string) => void;
   onDelete: () => void;
+  onDone: () => void;
 }) => {
   const { t } = useTranslation();
   const swipeableRef = useRef<Swipeable>(null);
+  const [showNote, setShowNote] = useState(!!item.note);
 
-  const renderRightActions = (_progress: RNAnimated.AnimatedInterpolation<number>, dragX: RNAnimated.AnimatedInterpolation<number>) => {
+  const renderRightActions = (
+    _progress: RNAnimated.AnimatedInterpolation<number>,
+    dragX: RNAnimated.AnimatedInterpolation<number>
+  ) => {
     const scale = dragX.interpolate({
       inputRange: [-100, 0],
       outputRange: [1, 0.5],
       extrapolate: 'clamp',
     });
-
     const opacity = dragX.interpolate({
       inputRange: [-100, -50, 0],
       outputRange: [1, 0.7, 0],
@@ -48,49 +57,26 @@ const AnimatedSetCard = ({
     });
 
     return (
-      <RNAnimated.View
-        style={[
-          styles.deleteSwipeContainer,
-          { opacity, transform: [{ scale }] }
-        ]}
-      >
+      <RNAnimated.View style={[styles.deleteSwipeContainer, { opacity, transform: [{ scale }] }]}>
         <TouchableOpacity
           onPress={() => {
             Alert.alert(
               t("delete_set_title"),
               t("delete_set_confirm"),
               [
-                {
-                  text: t("cancel"),
-                  style: "cancel",
-                  onPress: () => swipeableRef.current?.close()
-                },
-                {
-                  text: t("delete"),
-                  style: "destructive",
-                  onPress: onDelete,
-                },
+                { text: t("cancel"), style: "cancel", onPress: () => swipeableRef.current?.close() },
+                { text: t("delete"), style: "destructive", onPress: onDelete },
               ],
-              {
-                cancelable: true,
-                userInterfaceStyle: 'dark'
-              }
+              { cancelable: true, userInterfaceStyle: 'dark' }
             );
           }}
           style={styles.deleteSwipe}
           activeOpacity={0.7}
         >
-          <LinearGradient
-            colors={['#FF3B30', '#C62828']}
-            style={styles.deleteGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.deleteIconContainer}>
-              <Text style={styles.deleteIcon}>✕</Text>
-            </View>
+          <View style={styles.deleteBox}>
+            <Text style={styles.deleteIcon}>✕</Text>
             <Text style={styles.deleteText}>{t("delete")}</Text>
-          </LinearGradient>
+          </View>
         </TouchableOpacity>
       </RNAnimated.View>
     );
@@ -106,22 +92,17 @@ const AnimatedSetCard = ({
         rightThreshold={40}
       >
         <View style={styles.setCard}>
-          <View style={styles.setIndexContainer}>
-            <LinearGradient
-              colors={['#667EEA', '#764BA2']}
-              style={styles.setIndexGradient}
-            >
+          <View style={styles.setRow}>
+            <View style={styles.setIndexBadge}>
               <Text style={styles.setIndex}>{index + 1}</Text>
-            </LinearGradient>
-          </View>
+            </View>
 
-          <View style={styles.inputGroup}>
             <View style={styles.inputWrapper}>
               <Text style={styles.inputLabel}>{t("weight")}</Text>
               <TextInput
                 style={styles.input}
                 placeholder="0"
-                placeholderTextColor="#6E7178"
+                placeholderTextColor={theme.color.textDim}
                 keyboardType="numeric"
                 value={item.weight}
                 onChangeText={(v) => onUpdate("weight", v)}
@@ -129,26 +110,48 @@ const AnimatedSetCard = ({
               <Text style={styles.inputUnit}>kg</Text>
             </View>
 
-            <View style={styles.inputDivider} />
+            <Text style={styles.multSymbol}>×</Text>
 
             <View style={styles.inputWrapper}>
               <Text style={styles.inputLabel}>{t("reps")}</Text>
               <TextInput
                 style={styles.input}
                 placeholder="0"
-                placeholderTextColor="#6E7178"
+                placeholderTextColor={theme.color.textDim}
                 keyboardType="numeric"
                 value={item.reps}
                 onChangeText={(v) => onUpdate("reps", v)}
               />
-              <Text style={styles.inputUnit}>x</Text>
+              <Text style={styles.inputUnit}>×</Text>
             </View>
+
+            <TouchableOpacity onPress={onDone} style={styles.doneBtn}>
+              <Text style={styles.doneBtnText}>✓</Text>
+            </TouchableOpacity>
           </View>
 
-          <View style={styles.dateContainer}>
-            <Text style={styles.dateIcon}>📅</Text>
-            <Text style={styles.dateText}>{item.date}</Text>
+          <View style={styles.setFooter}>
+            <View style={styles.dateChip}>
+              <Text style={styles.dateText}>{item.date}</Text>
+            </View>
+            <TouchableOpacity onPress={() => setShowNote((v) => !v)}>
+              <Text style={styles.noteToggle}>
+                {showNote ? "− " : "+ "}
+                {t("note")}
+              </Text>
+            </TouchableOpacity>
           </View>
+
+          {showNote && (
+            <TextInput
+              style={styles.noteInput}
+              placeholder={t("note_placeholder")}
+              placeholderTextColor={theme.color.textDim}
+              value={item.note || ""}
+              onChangeText={(v) => onUpdate("note", v)}
+              multiline
+            />
+          )}
         </View>
       </Swipeable>
     </Animated.View>
@@ -163,6 +166,8 @@ export default function ExerciseDetail() {
   const [exercise, setExercise] = useState<Exercise | null>(null);
   const [sets, setSets] = useState<ExerciseSet[]>([]);
   const [loading, setLoading] = useState(true);
+  const [timerVisible, setTimerVisible] = useState(false);
+  const [timerSeconds, setTimerSeconds] = useState(90);
 
   useEffect(() => {
     (async () => {
@@ -175,32 +180,39 @@ export default function ExerciseDetail() {
     })();
   }, [id, exerciseId]);
 
-  const updateSet = (index: number, field: "weight" | "reps", value: string) => {
-    setSets((prev) =>
-      prev.map((s, i) => (i === index ? { ...s, [field]: value } : s))
-    );
+  const updateSet = (index: number, field: "weight" | "reps" | "note", value: string) => {
+    setSets((prev) => prev.map((s, i) => (i === index ? { ...s, [field]: value } : s)));
   };
 
   const addSet = () => {
+    hapticTap();
     setSets((prev) => [
       ...prev,
       {
         id: Date.now().toString(),
-        weight: "",
-        reps: "",
+        weight: prev[prev.length - 1]?.weight ?? "",
+        reps: prev[prev.length - 1]?.reps ?? "",
         date: new Date().toISOString().split("T")[0],
       },
     ]);
   };
 
   const deleteSet = (i: number) => {
+    hapticTap();
     setSets((prev) => prev.filter((_, idx) => idx !== i));
   };
 
+  const startTimer = (seconds: number) => {
+    hapticSuccess();
+    setTimerSeconds(seconds);
+    setTimerVisible(true);
+  };
+
   const save = async () => {
+    hapticSuccess();
     await updateExerciseSets(id, exerciseId, sets);
     Alert.alert("✅", t("sets_saved"), [
-      { text: t("ok"), onPress: () => router.back() }
+      { text: t("ok"), onPress: () => router.back() },
     ]);
   };
 
@@ -218,23 +230,16 @@ export default function ExerciseDetail() {
         options={{
           headerShown: true,
           headerTitle: exercise?.name || t("exercises"),
-          headerStyle: {
-            backgroundColor: '#0A0B0D',
-          },
-          headerTintColor: '#667EEA',
+          headerStyle: { backgroundColor: theme.color.bg },
+          headerTintColor: theme.color.accent,
           headerTitleStyle: {
             fontWeight: '700',
             fontSize: 18,
-            color: '#fff',
+            color: theme.color.text,
           },
           headerShadowVisible: false,
           headerBackTitle: t("back"),
-          headerBackTitleStyle: {
-            fontSize: 16,
-          },
           gestureEnabled: true,
-          gestureDirection: 'horizontal',
-          fullScreenGestureEnabled: true,
         }}
       />
 
@@ -249,62 +254,55 @@ export default function ExerciseDetail() {
           >
             <LinearGradient
               colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']}
-              style={styles.headerOverlay}
+              style={StyleSheet.absoluteFillObject}
             />
             <View style={styles.headerContent}>
-              <Text style={styles.headerSubtext}>{t("new_exercise")}</Text>
-              <Text style={styles.headerTitle}>{exercise?.name || "..."}</Text>
-              <View style={styles.statsRow}>
-                <View style={styles.statBadge}>
-                  <Text style={styles.statNumber}>{sets.length}</Text>
-                  <Text style={styles.statLabel}>{t("sets")}</Text>
-                </View>
+              <Text style={styles.headerLabel}>{t("exercises")}</Text>
+              <Text style={styles.headerTitle}>{exercise?.name}</Text>
+              <View style={styles.statBadge}>
+                <Text style={styles.statNumber}>{sets.length}</Text>
+                <Text style={styles.statLabel}>{t("sets")}</Text>
               </View>
             </View>
           </ImageBackground>
         ) : (
           <View style={[styles.headerImage, styles.noImageHeader]}>
-            <LinearGradient
-              colors={['#667EEA', '#764BA2']}
-              style={styles.headerOverlay}
-            />
             <View style={styles.headerContent}>
-              <Text style={styles.headerSubtext}>{t("new_exercise")}</Text>
-              <Text style={styles.headerTitle}>{exercise?.name || "..."}</Text>
-              <View style={styles.statsRow}>
-                <View style={styles.statBadge}>
-                  <Text style={styles.statNumber}>{sets.length}</Text>
-                  <Text style={styles.statLabel}>{t("sets")}</Text>
-                </View>
+              <Text style={styles.headerLabel}>{t("exercises")}</Text>
+              <Text style={styles.headerTitle}>{exercise?.name}</Text>
+              <View style={styles.statBadge}>
+                <Text style={styles.statNumber}>{sets.length}</Text>
+                <Text style={styles.statLabel}>{t("sets")}</Text>
               </View>
             </View>
           </View>
         )}
 
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <View style={styles.contentContainer}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{t("your_sets")}</Text>
-              <TouchableOpacity style={styles.addSetBtn} onPress={addSet}>
-                <Text style={styles.addSetBtnText}>+ {t("add_set")}</Text>
-              </TouchableOpacity>
-            </View>
-
             <ScrollView
               style={styles.scrollView}
               contentContainerStyle={styles.scrollContent}
               showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
             >
+              {/* Progression chart */}
+              <Text style={styles.blockLabel}>{t("progression")}</Text>
+              <ProgressionChart sets={sets} />
+
+              {/* Sets */}
+              <View style={styles.sectionHeader}>
+                <Text style={styles.blockLabel}>{t("your_sets")}</Text>
+                <TouchableOpacity style={styles.addSetBtn} onPress={addSet}>
+                  <Text style={styles.addSetBtnText}>+ {t("add_set")}</Text>
+                </TouchableOpacity>
+              </View>
+
               {sets.length === 0 && !loading ? (
                 <Animated.View entering={FadeIn} style={styles.emptyContainer}>
                   <Text style={styles.emptyIcon}>🏋️</Text>
                   <Text style={styles.emptyTitle}>{t("no_sets")}</Text>
-                  <Text style={styles.emptySubtitle}>
-                    {t("tap_add_set")}
-                  </Text>
+                  <Text style={styles.emptySubtitle}>{t("tap_add_set")}</Text>
                 </Animated.View>
               ) : (
                 sets.map((item, index) => (
@@ -314,359 +312,357 @@ export default function ExerciseDetail() {
                     index={index}
                     onUpdate={(field, value) => updateSet(index, field, value)}
                     onDelete={() => deleteSet(index)}
+                    onDone={() => startTimer(90)}
                   />
                 ))
               )}
             </ScrollView>
 
-            {sets.length > 0 && (
-              <Animated.View entering={FadeIn.delay(300)} style={styles.saveButtonContainer}>
+            {/* Bottom actions */}
+            <View style={styles.bottomBar}>
+              <TouchableOpacity style={styles.timerBtn} onPress={() => startTimer(90)}>
+                <Text style={styles.timerBtnText}>⏱ {t("rest_timer")}</Text>
+              </TouchableOpacity>
+              {sets.length > 0 && (
                 <TouchableOpacity style={styles.saveBtn} onPress={save}>
-                  <LinearGradient
-                    colors={['#4ADE80', '#22C55E']}
-                    style={styles.saveBtnGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                  >
-                    <Text style={styles.saveBtnText}>💾 {t("save_progress")}</Text>
-                  </LinearGradient>
+                  <Text style={styles.saveBtnText}>💾 {t("save")}</Text>
                 </TouchableOpacity>
-              </Animated.View>
-            )}
+              )}
+            </View>
           </View>
         </KeyboardAvoidingView>
+
+        <RestTimer
+          visible={timerVisible}
+          initialSeconds={timerSeconds}
+          onClose={() => setTimerVisible(false)}
+        />
       </View>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#0A0B0D",
-  },
+  container: { flex: 1, backgroundColor: theme.color.bg },
 
   headerImage: {
-    height: 240,
+    height: 200,
     justifyContent: "flex-end",
   },
 
   noImageHeader: {
-    backgroundColor: "#667EEA",
-  },
-
-  headerOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    backgroundColor: theme.color.surface,
   },
 
   headerContent: {
-    padding: 24,
-    paddingBottom: 32,
+    padding: theme.space.xxl,
+    paddingBottom: theme.space.xxxl,
   },
 
-  headerSubtext: {
-    color: "rgba(255,255,255,0.7)",
-    fontSize: 12,
-    fontWeight: "600",
-    marginBottom: 4,
+  headerLabel: {
+    color: theme.color.textMuted,
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.semibold,
     letterSpacing: 1.5,
     textTransform: "uppercase",
+    marginBottom: theme.space.xs,
   },
 
   headerTitle: {
-    fontSize: 32,
-    fontWeight: "700",
-    color: "white",
-    marginBottom: 16,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
-  },
-
-  statsRow: {
-    flexDirection: "row",
-    gap: 16,
+    fontSize: theme.font.size.display,
+    fontWeight: theme.font.weight.bold,
+    color: theme.color.text,
+    marginBottom: theme.space.md,
   },
 
   statBadge: {
-    backgroundColor: "rgba(255,255,255,0.15)",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
+    backgroundColor: theme.color.accentSoft,
+    paddingHorizontal: theme.space.md,
+    paddingVertical: theme.space.sm,
+    borderRadius: theme.radius.md,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: theme.space.sm,
+    alignSelf: "flex-start",
   },
 
   statNumber: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "white",
+    fontSize: theme.font.size.lg,
+    fontWeight: theme.font.weight.bold,
+    color: theme.color.accent,
   },
 
   statLabel: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.8)",
-    fontWeight: "600",
+    fontSize: theme.font.size.xs,
+    color: theme.color.accent,
+    fontWeight: theme.font.weight.semibold,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
 
   contentContainer: {
     flex: 1,
-    backgroundColor: "#0A0B0D",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    marginTop: -24,
-    paddingTop: 24,
-    paddingHorizontal: 20,
+    backgroundColor: theme.color.bg,
+    borderTopLeftRadius: theme.radius.xl,
+    borderTopRightRadius: theme.radius.xl,
+    marginTop: -20,
+    paddingTop: theme.space.xl,
+    paddingHorizontal: theme.space.xl,
+  },
+
+  scrollView: { flex: 1 },
+
+  scrollContent: { paddingBottom: 120 },
+
+  blockLabel: {
+    fontSize: theme.font.size.md,
+    fontWeight: theme.font.weight.bold,
+    color: theme.color.text,
+    marginBottom: theme.space.md,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
   },
 
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
-  },
-
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "white",
+    marginBottom: theme.space.md,
+    marginTop: theme.space.md,
   },
 
   addSetBtn: {
-    backgroundColor: "#1A1C1E",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#667EEA",
+    backgroundColor: theme.color.accentSoft,
+    paddingHorizontal: theme.space.lg,
+    paddingVertical: theme.space.sm,
+    borderRadius: theme.radius.md,
   },
 
   addSetBtnText: {
-    color: "#667EEA",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-
-  scrollView: {
-    flex: 1,
-  },
-
-  scrollContent: {
-    paddingBottom: 120,
+    color: theme.color.accent,
+    fontSize: theme.font.size.sm,
+    fontWeight: theme.font.weight.bold,
   },
 
   setCard: {
-    backgroundColor: "#1A1C1E",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: theme.color.surface,
+    borderRadius: theme.radius.lg,
+    padding: theme.space.md,
+    marginBottom: theme.space.md,
+  },
+
+  setRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-    minHeight: 88,
+    gap: theme.space.sm,
   },
 
-  setIndexContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    overflow: "hidden",
-  },
-
-  setIndexGradient: {
-    width: "100%",
-    height: "100%",
+  setIndexBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: theme.color.accent,
     justifyContent: "center",
     alignItems: "center",
   },
 
   setIndex: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-
-  inputGroup: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#0F1012",
-    borderRadius: 12,
-    padding: 12,
-    gap: 12,
+    color: theme.color.bg,
+    fontSize: theme.font.size.md,
+    fontWeight: theme.font.weight.bold,
   },
 
   inputWrapper: {
     flex: 1,
     alignItems: "center",
+    backgroundColor: theme.color.surfaceMuted,
+    borderRadius: theme.radius.md,
+    paddingVertical: theme.space.sm,
   },
 
   inputLabel: {
-    color: "#6E7178",
-    fontSize: 11,
-    fontWeight: "600",
-    marginBottom: 4,
+    color: theme.color.textDim,
+    fontSize: 10,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
+    marginBottom: 2,
   },
 
   input: {
-    color: "white",
-    fontSize: 20,
-    fontWeight: "700",
+    color: theme.color.text,
+    fontSize: theme.font.size.xl,
+    fontWeight: theme.font.weight.bold,
     textAlign: "center",
     padding: 0,
     minWidth: 40,
   },
 
   inputUnit: {
-    color: "#6E7178",
-    fontSize: 12,
-    fontWeight: "600",
-    marginTop: 2,
+    color: theme.color.textDim,
+    fontSize: 10,
   },
 
-  inputDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: "#2A2C2E",
+  multSymbol: {
+    color: theme.color.textDim,
+    fontSize: theme.font.size.lg,
+    fontWeight: theme.font.weight.bold,
   },
 
-  dateContainer: {
-    flexDirection: "row",
+  doneBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: theme.color.accent,
+    justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(102, 126, 234, 0.15)",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    gap: 4,
   },
 
-  dateIcon: {
-    fontSize: 12,
+  doneBtnText: {
+    color: theme.color.bg,
+    fontSize: theme.font.size.xl,
+    fontWeight: theme.font.weight.bold,
+  },
+
+  setFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: theme.space.sm,
+  },
+
+  dateChip: {
+    backgroundColor: theme.color.surfaceMuted,
+    paddingHorizontal: theme.space.sm,
+    paddingVertical: 4,
+    borderRadius: theme.radius.sm,
   },
 
   dateText: {
-    color: "#667EEA",
-    fontSize: 11,
-    fontWeight: "700",
+    color: theme.color.textMuted,
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.semibold,
+  },
+
+  noteToggle: {
+    color: theme.color.accent,
+    fontSize: theme.font.size.sm,
+    fontWeight: theme.font.weight.semibold,
+  },
+
+  noteInput: {
+    marginTop: theme.space.sm,
+    backgroundColor: theme.color.surfaceMuted,
+    borderRadius: theme.radius.sm,
+    padding: theme.space.sm,
+    color: theme.color.text,
+    fontSize: theme.font.size.sm,
+    minHeight: 40,
+    textAlignVertical: "top",
   },
 
   deleteSwipeContainer: {
     justifyContent: "center",
-    height: 88,
+    height: 100,
   },
 
   deleteSwipe: {
-    height: 88,
-    width: 100,
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 16,
+    height: 100,
+    width: 90,
     marginLeft: 8,
-    overflow: 'hidden',
-    shadowColor: "#FF3B30",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 8,
   },
 
-  deleteGradient: {
-    width: "100%",
-    height: "100%",
+  deleteBox: {
+    flex: 1,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.color.danger,
     justifyContent: "center",
     alignItems: "center",
-    gap: 6,
-  },
-
-  deleteIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.25)",
-    justifyContent: "center",
-    alignItems: "center",
+    gap: 4,
   },
 
   deleteIcon: {
-    color: "white",
-    fontSize: 20,
-    fontWeight: "700",
+    color: theme.color.text,
+    fontSize: theme.font.size.xl,
+    fontWeight: theme.font.weight.bold,
   },
 
   deleteText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "700",
-    letterSpacing: 0.5,
+    color: theme.color.text,
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.bold,
   },
 
-  emptyContainer: {
+  bottomBar: {
+    flexDirection: "row",
+    gap: theme.space.md,
+    paddingVertical: theme.space.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.color.border,
+    backgroundColor: theme.color.bg,
+  },
+
+  timerBtn: {
+    flex: 1,
+    paddingVertical: theme.space.lg,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.color.surfaceElevated,
     alignItems: "center",
-    marginTop: 60,
-    paddingHorizontal: 40,
   },
 
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-
-  emptyTitle: {
-    color: "white",
-    fontSize: 20,
-    fontWeight: "600",
-    marginBottom: 8,
-    textAlign: "center",
-  },
-
-  emptySubtitle: {
-    color: "#6E7178",
-    fontSize: 14,
-    textAlign: "center",
-  },
-
-  emptyText: {
-    color: "#6E7178",
-    fontSize: 16,
-  },
-
-  saveButtonContainer: {
-    paddingVertical: 16,
+  timerBtnText: {
+    color: theme.color.text,
+    fontSize: theme.font.size.md,
+    fontWeight: theme.font.weight.bold,
   },
 
   saveBtn: {
-    borderRadius: 16,
-    overflow: "hidden",
-    shadowColor: "#4ADE80",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-
-  saveBtnGradient: {
-    paddingVertical: 18,
+    flex: 1,
+    paddingVertical: theme.space.lg,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.color.accent,
     alignItems: "center",
   },
 
   saveBtnText: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "700",
+    color: theme.color.bg,
+    fontSize: theme.font.size.md,
+    fontWeight: theme.font.weight.bold,
+  },
+
+  emptyContainer: {
+    alignItems: "center",
+    marginTop: 40,
+    paddingHorizontal: 40,
+  },
+
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: theme.space.md,
+  },
+
+  emptyTitle: {
+    color: theme.color.text,
+    fontSize: theme.font.size.lg,
+    fontWeight: theme.font.weight.semibold,
+    marginBottom: theme.space.sm,
+    textAlign: "center",
+  },
+
+  emptySubtitle: {
+    color: theme.color.textMuted,
+    fontSize: theme.font.size.sm,
+    textAlign: "center",
+  },
+
+  emptyText: {
+    color: theme.color.textMuted,
+    fontSize: theme.font.size.md,
   },
 
   centerContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#0A0B0D",
+    backgroundColor: theme.color.bg,
   },
 });

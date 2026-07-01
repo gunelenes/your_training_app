@@ -1,6 +1,7 @@
+import { theme } from "@/constants/theme";
+import { hapticSuccess } from "@/src/lib/haptics";
 import { getWorkout, updateWorkout } from "@/src/lib/storage";
 import * as ImagePicker from "expo-image-picker";
-import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -41,10 +42,7 @@ export default function EditWorkout() {
       allowsEditing: true,
       aspect: [16, 9],
     });
-
-    if (!result.canceled) {
-      setImage(result.assets[0].uri);
-    }
+    if (!result.canceled) setImage(result.assets[0].uri);
   };
 
   const saveChanges = async () => {
@@ -52,8 +50,8 @@ export default function EditWorkout() {
       Alert.alert(t("error"), t("workout_name_required"));
       return;
     }
-
     await updateWorkout(id, { name, image: image ?? undefined });
+    hapticSuccess();
     router.back();
   };
 
@@ -63,91 +61,53 @@ export default function EditWorkout() {
         options={{
           headerShown: true,
           headerTitle: t("edit_workout"),
-          headerStyle: { backgroundColor: "#0A0B0D" },
-          headerTintColor: "#667EEA",
-          headerTitleStyle: {
-            fontWeight: "700",
-            fontSize: 18,
-            color: "#fff",
-          },
+          headerStyle: { backgroundColor: theme.color.bg },
+          headerTintColor: theme.color.accent,
+          headerTitleStyle: { fontWeight: "700", fontSize: 18, color: theme.color.text },
           headerShadowVisible: false,
           headerBackTitle: t("back"),
-          headerBackTitleStyle: { fontSize: 14 },
-          gestureEnabled: true,
-          fullScreenGestureEnabled: true,
         }}
       />
-
       <StatusBar barStyle="light-content" />
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <Animated.View entering={FadeInUp.duration(600)} style={styles.header}>
-          <Text style={styles.headerSubtext}>{t("edit_workout")}</Text>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Animated.View entering={FadeInUp.duration(500)}>
+          <Text style={styles.headerLabel}>{t("edit_workout")}</Text>
           <Text style={styles.title}>{t("edit_workout")}</Text>
-          <Text style={styles.headerDescription}>
-            {t("edit_workout_desc")}
-          </Text>
+          <Text style={styles.subtitle}>{t("edit_workout_desc")}</Text>
         </Animated.View>
 
         <Animated.View entering={SlideInLeft.delay(200)} style={styles.section}>
-          <TouchableOpacity onPress={pickImage} activeOpacity={0.8}>
+          <TouchableOpacity onPress={pickImage} activeOpacity={0.85}>
             {image ? (
-              <View style={styles.imagePreviewContainer}>
+              <View style={styles.imgWrap}>
                 <Image source={{ uri: image }} style={styles.image} />
-                <LinearGradient
-                  colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.7)"]}
-                  style={styles.previewOverlay}
-                />
-                <TouchableOpacity
-                  style={styles.changePhotoBtn}
-                  onPress={pickImage}
-                >
-                  <LinearGradient
-                    colors={["rgba(255,255,255,0.3)", "rgba(255,255,255,0.1)"]}
-                    style={styles.changePhotoBtnGradient}
-                  >
-                    <Text style={styles.changePhotoBtnText}>
-                      📷 {t("select_photo")}
-                    </Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+                <View style={styles.changeBtn}>
+                  <Text style={styles.changeBtnText}>📷 {t("select_photo")}</Text>
+                </View>
               </View>
             ) : (
               <View style={styles.noImage}>
-                <Text style={{ color: "#6E7178", fontWeight: "600" }}>
-                  {t("select_photo")}
-                </Text>
+                <Text style={styles.noImageText}>{t("select_photo")}</Text>
               </View>
             )}
           </TouchableOpacity>
         </Animated.View>
 
-        <Animated.View entering={SlideInLeft.delay(350)} style={styles.section}>
+        <Animated.View entering={SlideInLeft.delay(300)} style={styles.section}>
           <Text style={styles.label}>{t("workout_name")}</Text>
-
-          <View style={styles.inputContainer}>
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              placeholder={t("workout_placeholder")}
-              placeholderTextColor="#6E7178"
-              style={styles.input}
-            />
-          </View>
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            placeholder={t("workout_placeholder")}
+            placeholderTextColor={theme.color.textDim}
+            style={styles.input}
+          />
         </Animated.View>
 
-        <Animated.View entering={FadeInUp.delay(500)} style={styles.saveContainer}>
+        <Animated.View entering={FadeInUp.delay(400)}>
           <TouchableOpacity style={styles.saveBtn} onPress={saveChanges}>
-            <LinearGradient
-              colors={["#4ADE80", "#22C55E"]}
-              style={styles.saveBtnGradient}
-            >
-              <Text style={styles.saveText}>💾 {t("save")}</Text>
-            </LinearGradient>
+            <Text style={styles.saveBtnText}>💾 {t("save")}</Text>
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>
@@ -156,137 +116,82 @@ export default function EditWorkout() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#0A0B0D",
-  },
+  container: { flex: 1, backgroundColor: theme.color.bg },
+  content: { padding: theme.space.xl, paddingTop: 40, paddingBottom: 60 },
 
-  scrollView: { flex: 1 },
-
-  scrollContent: {
-    padding: 20,
-    paddingTop: 60,
-    paddingBottom: 40,
-  },
-
-  header: {
-    marginBottom: 32,
-  },
-
-  headerSubtext: {
-    color: "#6E7178",
-    fontSize: 14,
-    fontWeight: "700",
-    marginBottom: 4,
-    letterSpacing: 1.5,
+  headerLabel: {
+    color: theme.color.textMuted,
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.semibold,
     textTransform: "uppercase",
+    letterSpacing: 1.5,
   },
-
   title: {
-    fontSize: 36,
-    fontWeight: "700",
-    color: "white",
-    letterSpacing: -0.5,
-  },
-
-  headerDescription: {
-    color: "#6E7178",
-    fontSize: 16,
+    color: theme.color.text,
+    fontSize: theme.font.size.hero,
+    fontWeight: theme.font.weight.bold,
+    letterSpacing: -1,
     marginTop: 4,
   },
-
-  section: {
-    marginBottom: 32,
+  subtitle: {
+    color: theme.color.textMuted,
+    fontSize: theme.font.size.md,
+    marginTop: 4,
+    marginBottom: theme.space.xxl,
   },
 
-  imagePreviewContainer: {
-    position: "relative",
-    borderRadius: 20,
-    overflow: "hidden",
+  section: { marginBottom: theme.space.xl },
+
+  label: {
+    color: theme.color.text,
+    fontSize: theme.font.size.md,
+    fontWeight: theme.font.weight.bold,
+    marginBottom: theme.space.sm,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
   },
 
-  image: {
-    width: "100%",
-    height: 220,
-    resizeMode: "cover",
-  },
-
-  previewOverlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
-
-  changePhotoBtn: {
+  imgWrap: { borderRadius: theme.radius.lg, overflow: "hidden", position: "relative" },
+  image: { width: "100%", height: 200, resizeMode: "cover" },
+  changeBtn: {
     position: "absolute",
-    bottom: 16,
-    left: 16,
-    right: 16,
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-
-  changePhotoBtnGradient: {
-    padding: 14,
+    bottom: theme.space.md,
+    left: theme.space.md,
+    right: theme.space.md,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    padding: theme.space.sm,
+    borderRadius: theme.radius.sm,
     alignItems: "center",
   },
-
-  changePhotoBtnText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "700",
-  },
+  changeBtnText: { color: theme.color.text, fontSize: theme.font.size.sm, fontWeight: theme.font.weight.bold },
 
   noImage: {
     width: "100%",
-    height: 220,
-    borderRadius: 20,
-    backgroundColor: "#1A1C1E",
-    alignItems: "center",
+    height: 200,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.color.surface,
     justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    borderStyle: "dashed",
   },
-
-  label: {
-    color: "white",
-    fontSize: 18,
-    marginBottom: 12,
-    fontWeight: "700",
-  },
-
-  inputContainer: {
-    backgroundColor: "#1A1C1E",
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: "#2A2C2E",
-  },
+  noImageText: { color: theme.color.textMuted, fontSize: theme.font.size.md, fontWeight: theme.font.weight.semibold },
 
   input: {
-    padding: 18,
-    fontSize: 16,
-    color: "white",
-    fontWeight: "500",
-  },
-
-  saveContainer: {
-    marginTop: 10,
+    backgroundColor: theme.color.surface,
+    borderRadius: theme.radius.lg,
+    padding: theme.space.lg,
+    color: theme.color.text,
+    fontSize: theme.font.size.md,
+    fontWeight: theme.font.weight.semibold,
   },
 
   saveBtn: {
-    borderRadius: 16,
-    overflow: "hidden",
-    shadowColor: "#4ADE80",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-
-  saveBtnGradient: {
-    paddingVertical: 20,
+    backgroundColor: theme.color.accent,
+    borderRadius: theme.radius.lg,
+    paddingVertical: theme.space.xl,
     alignItems: "center",
   },
-
-  saveText: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "700",
-  },
+  saveBtnText: { color: theme.color.bg, fontSize: theme.font.size.lg, fontWeight: theme.font.weight.bold },
 });

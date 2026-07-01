@@ -1,5 +1,14 @@
-import { deleteExercise, getWorkout, type Exercise, type Workout } from "@/src/lib/storage";
-import { LinearGradient } from 'expo-linear-gradient';
+import RestTimer from "@/components/rest-timer";
+import { theme } from "@/constants/theme";
+import { MUSCLE_GROUP_META } from "@/src/lib/exercise-library";
+import { hapticSuccess, hapticTap } from "@/src/lib/haptics";
+import {
+  addSession,
+  deleteExercise,
+  getWorkout,
+  type Exercise,
+  type Workout,
+} from "@/src/lib/storage";
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -18,39 +27,19 @@ import { Swipeable } from "react-native-gesture-handler";
 
 const SkeletonExerciseCard = ({ delay = 0 }: { delay?: number }) => {
   const pulseAnim = useRef(new Animated.Value(0)).current;
-
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1000,
-          delay,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 0,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1000, delay, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0, duration: 1000, useNativeDriver: true }),
       ])
     ).start();
   }, [delay, pulseAnim]);
-
-  const opacity = pulseAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.3, 0.7],
-  });
-
-  return (
-    <Animated.View style={[styles.skeletonCard, { opacity }]}>
-      <View style={styles.skeletonTitle} />
-      <View style={styles.skeletonSubtitle} />
-    </Animated.View>
-  );
+  const opacity = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.7] });
+  return <Animated.View style={[styles.skeletonCard, { opacity }]} />;
 };
 
-const AnimatedExerciseCard = ({
+const ExerciseCard = ({
   item,
   index,
   onPress,
@@ -62,91 +51,41 @@ const AnimatedExerciseCard = ({
   onDelete: (swipeableRef: React.RefObject<Swipeable | null>) => void;
 }) => {
   const { t } = useTranslation();
-  const scaleAnim = useRef(new Animated.Value(0)).current;
-  const translateX = useRef(new Animated.Value(-50)).current;
   const swipeableRef = useRef<Swipeable>(null);
+  const scaleAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        delay: index * 80,
-        useNativeDriver: true,
-        tension: 50,
-        friction: 7,
-      }),
-      Animated.timing(translateX, {
-        toValue: 0,
-        delay: index * 80,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [index, scaleAnim, translateX]);
-
-  const handlePressIn = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 0.97,
-      useNativeDriver: true,
-      tension: 100,
-    }).start();
-  };
-
-  const handlePressOut = () => {
     Animated.spring(scaleAnim, {
       toValue: 1,
+      delay: index * 50,
       useNativeDriver: true,
-      tension: 100,
+      tension: 60,
+      friction: 8,
     }).start();
-  };
+  }, [index, scaleAnim]);
 
-  const renderRightActions = (_progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
-    const scale = dragX.interpolate({
-      inputRange: [-100, 0],
-      outputRange: [1, 0.5],
-      extrapolate: 'clamp',
-    });
+  const meta = MUSCLE_GROUP_META[item.muscleGroup ?? "other"];
 
+  const renderRightActions = (
+    _p: Animated.AnimatedInterpolation<number>,
+    dragX: Animated.AnimatedInterpolation<number>
+  ) => {
     const opacity = dragX.interpolate({
       inputRange: [-100, -50, 0],
       outputRange: [1, 0.7, 0],
-      extrapolate: 'clamp',
+      extrapolate: "clamp",
     });
-
     return (
-      <Animated.View
-        style={[
-          { height: 80, justifyContent: "center" },
-          { opacity, transform: [{ scale }] }
-        ]}
-      >
-        <TouchableOpacity
-          onPress={() => onDelete(swipeableRef)}
-          style={styles.deleteSwipe}
-          activeOpacity={0.7}
-        >
-          <LinearGradient
-            colors={['#FF3B30', '#C62828']}
-            style={styles.deleteGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.deleteIconContainer}>
-              <Text style={styles.deleteIcon}>✕</Text>
-            </View>
-          </LinearGradient>
+      <Animated.View style={[{ justifyContent: "center" }, { opacity }]}>
+        <TouchableOpacity onPress={() => onDelete(swipeableRef)} style={styles.deleteBox}>
+          <Text style={styles.deleteIcon}>✕</Text>
         </TouchableOpacity>
       </Animated.View>
     );
   };
 
   return (
-    <Animated.View
-      style={[
-        styles.exerciseWrapper,
-        { transform: [{ scale: scaleAnim }, { translateX }] },
-      ]}
-    >
+    <Animated.View style={[styles.cardWrap, { transform: [{ scale: scaleAnim }] }]}>
       <Swipeable
         ref={swipeableRef}
         overshootRight={false}
@@ -154,32 +93,26 @@ const AnimatedExerciseCard = ({
         friction={2}
         rightThreshold={40}
       >
-        <TouchableOpacity
-          activeOpacity={1}
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
-          onPress={onPress}
-        >
-          <View style={styles.exerciseItem}>
-            <View style={styles.exerciseIconContainer}>
-              <Text style={styles.exerciseIcon}>💪</Text>
+        <TouchableOpacity onPress={onPress} activeOpacity={0.85}>
+          <View style={styles.card}>
+            <View style={[styles.cardIconWrap, { backgroundColor: meta.color + "20" }]}>
+              <Text style={styles.cardIcon}>{meta.emoji}</Text>
             </View>
-
-            <View style={styles.exerciseInfo}>
-              <Text style={styles.exerciseName} numberOfLines={1}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardName} numberOfLines={1}>
                 {item.name}
               </Text>
-              <View style={styles.setsTag}>
-                <View style={styles.setsDot} />
-                <Text style={styles.exerciseSets}>
+              <View style={styles.cardMeta}>
+                <Text style={styles.cardMetaText}>
                   {item.sets?.length || 0} {t("sets")}
+                </Text>
+                <Text style={styles.cardDot}>·</Text>
+                <Text style={[styles.cardMetaText, { color: meta.color }]}>
+                  {t(`muscle_${item.muscleGroup ?? "other"}`)}
                 </Text>
               </View>
             </View>
-
-            <View style={styles.arrowContainer}>
-              <Text style={styles.arrow}>→</Text>
-            </View>
+            <Text style={styles.cardArrow}>→</Text>
           </View>
         </TouchableOpacity>
       </Swipeable>
@@ -194,6 +127,10 @@ export default function WorkoutDetail() {
 
   const [workout, setWorkout] = useState<Workout | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sessionActive, setSessionActive] = useState(false);
+  const [sessionStart, setSessionStart] = useState<number | null>(null);
+  const [elapsed, setElapsed] = useState(0);
+  const [timerVisible, setTimerVisible] = useState(false);
 
   const loadWorkout = useCallback(async () => {
     setLoading(true);
@@ -208,6 +145,52 @@ export default function WorkoutDetail() {
     }, [loadWorkout])
   );
 
+  // Session timer
+  useEffect(() => {
+    if (!sessionActive || !sessionStart) return;
+    const interval = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - sessionStart) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [sessionActive, sessionStart]);
+
+  const startSession = () => {
+    hapticSuccess();
+    setSessionStart(Date.now());
+    setSessionActive(true);
+    setElapsed(0);
+  };
+
+  const finishSession = async () => {
+    if (!workout || !sessionStart) return;
+    const duration = Math.floor((Date.now() - sessionStart) / 1000);
+    hapticSuccess();
+    const totalVolume = workout.exercises.reduce(
+      (sum, e) =>
+        sum +
+        e.sets.reduce((s, x) => s + (Number(x.weight) || 0) * (Number(x.reps) || 0), 0),
+      0
+    );
+    await addSession({
+      id: Date.now().toString(),
+      workoutId: workout.id,
+      workoutName: workout.name,
+      startedAt: new Date(sessionStart).toISOString(),
+      finishedAt: new Date().toISOString(),
+      durationSec: duration,
+      totalVolume,
+    });
+    Alert.alert(
+      `✅ ${t("session_finished")}`,
+      `${t("session_duration")}: ${Math.floor(duration / 60)}m ${duration % 60}s\n${t("total_volume")}: ${totalVolume.toFixed(0)} kg`,
+      [{ text: t("ok") }],
+      { userInterfaceStyle: "dark" }
+    );
+    setSessionActive(false);
+    setSessionStart(null);
+    setElapsed(0);
+  };
+
   const handleDeleteExercise = async (
     exerciseId: string,
     swipeableRef: React.RefObject<Swipeable | null>
@@ -216,35 +199,20 @@ export default function WorkoutDetail() {
       t("delete"),
       t("delete_confirm"),
       [
-        {
-          text: t("cancel"),
-          style: "cancel",
-          onPress: () => swipeableRef.current?.close(),
-        },
+        { text: t("cancel"), style: "cancel", onPress: () => swipeableRef.current?.close() },
         {
           text: t("delete"),
           style: "destructive",
           onPress: async () => {
+            hapticTap();
             await deleteExercise(id, exerciseId);
             loadWorkout();
           },
         },
       ],
-      {
-        cancelable: true,
-        userInterfaceStyle: 'dark',
-      }
+      { cancelable: true, userInterfaceStyle: "dark" }
     );
   };
-
-  const renderExercise = ({ item, index }: { item: Exercise; index: number }) => (
-    <AnimatedExerciseCard
-      item={item}
-      index={index}
-      onPress={() => router.push(`/workouts/${id}/exercise/${item.id}`)}
-      onDelete={(swipeableRef) => handleDeleteExercise(item.id, swipeableRef)}
-    />
-  );
 
   if (!workout && !loading) {
     return (
@@ -254,29 +222,21 @@ export default function WorkoutDetail() {
     );
   }
 
+  const mm = Math.floor(elapsed / 60);
+  const ss = elapsed % 60;
+
   return (
     <>
       <Stack.Screen
         options={{
           headerShown: true,
           headerTitle: workout?.name || t("workouts"),
-          headerStyle: {
-            backgroundColor: '#0A0B0D',
-          },
-          headerTintColor: '#667EEA',
-          headerTitleStyle: {
-            fontWeight: '700',
-            fontSize: 18,
-            color: '#fff',
-          },
+          headerStyle: { backgroundColor: theme.color.bg },
+          headerTintColor: theme.color.accent,
+          headerTitleStyle: { fontWeight: "700", fontSize: 18, color: theme.color.text },
           headerShadowVisible: false,
           headerBackTitle: t("back"),
-          headerBackTitleStyle: {
-            fontSize: 16,
-          },
           gestureEnabled: true,
-          gestureDirection: 'horizontal',
-          fullScreenGestureEnabled: true,
         }}
       />
 
@@ -284,29 +244,19 @@ export default function WorkoutDetail() {
         <StatusBar barStyle="light-content" />
 
         {workout?.image ? (
-          <ImageBackground source={{ uri: workout.image }} style={styles.headerImage} blurRadius={0.5}>
-            <LinearGradient
-              colors={['rgba(0,0,0,0.2)', 'rgba(0,0,0,0.8)']}
-              style={styles.headerOverlay}
-            />
-
+          <ImageBackground source={{ uri: workout.image }} style={styles.headerImage}>
+            <View style={styles.headerOverlay} />
             <TouchableOpacity
               style={styles.editBtn}
               onPress={() => router.push(`/workouts/${id}/edit`)}
             >
-              <LinearGradient
-                colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.15)']}
-                style={styles.editBtnGradient}
-              >
-                <Text style={styles.editText}>✏️</Text>
-              </LinearGradient>
+              <Text style={styles.editIcon}>✏️</Text>
             </TouchableOpacity>
-
             <View style={styles.headerContent}>
-              <Text style={styles.headerSubtext}>{t("workout_plan")}</Text>
-              <Text style={styles.headerTitle}>{workout?.name || "..."}</Text>
+              <Text style={styles.headerLabel}>{t("workout_plan")}</Text>
+              <Text style={styles.headerTitle}>{workout?.name}</Text>
               <View style={styles.headerStats}>
-                <View style={styles.statItem}>
+                <View style={styles.statBadge}>
                   <Text style={styles.statNumber}>{workout?.exercises?.length || 0}</Text>
                   <Text style={styles.statLabel}>{t("exercises")}</Text>
                 </View>
@@ -315,28 +265,17 @@ export default function WorkoutDetail() {
           </ImageBackground>
         ) : (
           <View style={[styles.headerImage, styles.noImage]}>
-            <LinearGradient
-              colors={['#667EEA', '#764BA2']}
-              style={styles.headerOverlay}
-            />
-
             <TouchableOpacity
               style={styles.editBtn}
               onPress={() => router.push(`/workouts/${id}/edit`)}
             >
-              <LinearGradient
-                colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.15)']}
-                style={styles.editBtnGradient}
-              >
-                <Text style={styles.editText}>✏️</Text>
-              </LinearGradient>
+              <Text style={styles.editIcon}>✏️</Text>
             </TouchableOpacity>
-
             <View style={styles.headerContent}>
-              <Text style={styles.headerSubtext}>{t("workout_plan")}</Text>
-              <Text style={styles.headerTitle}>{workout?.name || "..."}</Text>
+              <Text style={styles.headerLabel}>{t("workout_plan")}</Text>
+              <Text style={styles.headerTitle}>{workout?.name}</Text>
               <View style={styles.headerStats}>
-                <View style={styles.statItem}>
+                <View style={styles.statBadge}>
                   <Text style={styles.statNumber}>{workout?.exercises?.length || 0}</Text>
                   <Text style={styles.statLabel}>{t("exercises")}</Text>
                 </View>
@@ -345,19 +284,34 @@ export default function WorkoutDetail() {
           </View>
         )}
 
+        {/* Session bar */}
+        {sessionActive && (
+          <View style={styles.sessionBar}>
+            <View style={styles.sessionDot} />
+            <Text style={styles.sessionLabel}>{t("session_active")}</Text>
+            <Text style={styles.sessionTime}>
+              {mm}:{ss.toString().padStart(2, "0")}
+            </Text>
+            <TouchableOpacity style={styles.sessionTimerBtn} onPress={() => setTimerVisible(true)}>
+              <Text style={styles.sessionTimerText}>⏱</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.sessionFinishBtn} onPress={finishSession}>
+              <Text style={styles.sessionFinishText}>{t("finish_session")}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={styles.contentContainer}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>{t("exercises")}</Text>
             <View style={styles.exerciseCount}>
-              <Text style={styles.exerciseCountText}>
-                {workout?.exercises?.length || 0}
-              </Text>
+              <Text style={styles.exerciseCountText}>{workout?.exercises?.length || 0}</Text>
             </View>
           </View>
 
           {loading ? (
             <View>
-              {[0, 1, 2, 3].map((i) => (
+              {[0, 1, 2].map((i) => (
                 <SkeletonExerciseCard key={i} delay={i * 100} />
               ))}
             </View>
@@ -365,371 +319,359 @@ export default function WorkoutDetail() {
             <FlatList
               data={workout?.exercises || []}
               keyExtractor={(item) => item.id}
-              renderItem={renderExercise}
-              contentContainerStyle={{ paddingBottom: 120 }}
+              renderItem={({ item, index }) => (
+                <ExerciseCard
+                  item={item}
+                  index={index}
+                  onPress={() => router.push(`/workouts/${id}/exercise/${item.id}`)}
+                  onDelete={(ref) => handleDeleteExercise(item.id, ref)}
+                />
+              )}
+              contentContainerStyle={{ paddingBottom: 160 }}
               showsVerticalScrollIndicator={false}
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                   <Text style={styles.emptyIcon}>🏋️</Text>
-                  <Text style={styles.emptyTitle}>
-                    {t("no_exercises")}
-                  </Text>
-                  <Text style={styles.emptySubtitle}>
-                    {t("tap_plus_first_exercise")}
-                  </Text>
+                  <Text style={styles.emptyTitle}>{t("no_exercises")}</Text>
+                  <Text style={styles.emptySubtitle}>{t("tap_plus_first_exercise")}</Text>
                 </View>
               }
             />
           )}
         </View>
 
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => router.push(`/workouts/${id}/add-exercise`)}
-        >
-          <LinearGradient
-            colors={['#4ADE80', '#22C55E']}
-            style={styles.fabGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+        {/* Bottom action bar */}
+        <View style={styles.bottomBar}>
+          {!sessionActive && (workout?.exercises?.length || 0) > 0 && (
+            <TouchableOpacity style={styles.startBtn} onPress={startSession}>
+              <Text style={styles.startBtnText}>▶ {t("start_session")}</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={styles.fabAdd}
+            onPress={() => router.push(`/workouts/${id}/add-exercise`)}
           >
-            <Text style={styles.fabText}>+</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+            <Text style={styles.fabAddText}>+</Text>
+          </TouchableOpacity>
+        </View>
+
+        <RestTimer
+          visible={timerVisible}
+          initialSeconds={90}
+          onClose={() => setTimerVisible(false)}
+        />
       </View>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#0A0B0D"
-  },
+  container: { flex: 1, backgroundColor: theme.color.bg },
 
   headerImage: {
-    height: 280,
+    height: 220,
     justifyContent: "flex-end",
   },
 
   noImage: {
-    backgroundColor: "#667EEA",
+    backgroundColor: theme.color.surface,
   },
 
   headerOverlay: {
     ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(10,11,13,0.65)",
   },
 
   headerContent: {
-    padding: 24,
-    paddingBottom: 32,
+    padding: theme.space.xxl,
+    paddingBottom: theme.space.xxxl,
   },
 
-  headerSubtext: {
-    color: "rgba(255,255,255,0.7)",
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 4,
-    letterSpacing: 1,
+  headerLabel: {
+    color: theme.color.textMuted,
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.semibold,
+    letterSpacing: 1.5,
     textTransform: "uppercase",
+    marginBottom: theme.space.xs,
   },
 
   headerTitle: {
-    fontSize: 36,
-    fontWeight: "700",
-    color: "white",
-    marginBottom: 16,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
+    fontSize: theme.font.size.display,
+    fontWeight: theme.font.weight.bold,
+    color: theme.color.text,
+    marginBottom: theme.space.md,
   },
 
-  headerStats: {
+  headerStats: { flexDirection: "row", gap: theme.space.md },
+
+  statBadge: {
+    backgroundColor: theme.color.accentSoft,
+    paddingHorizontal: theme.space.md,
+    paddingVertical: theme.space.sm,
+    borderRadius: theme.radius.md,
     flexDirection: "row",
-    gap: 24,
-  },
-
-  statItem: {
     alignItems: "center",
+    gap: theme.space.sm,
+    alignSelf: "flex-start",
   },
 
   statNumber: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "white",
+    fontSize: theme.font.size.lg,
+    fontWeight: theme.font.weight.bold,
+    color: theme.color.accent,
   },
 
   statLabel: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.7)",
-    marginTop: 2,
-    fontWeight: "600",
+    fontSize: theme.font.size.xs,
+    color: theme.color.accent,
+    fontWeight: theme.font.weight.semibold,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
 
   editBtn: {
     position: "absolute",
     top: 48,
-    right: 20,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    right: theme.space.xl,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
     zIndex: 20,
   },
 
-  editBtnGradient: {
-    width: "100%",
-    height: "100%",
-    justifyContent: "center",
+  editIcon: { fontSize: 18 },
+
+  sessionBar: {
+    flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.2)",
+    gap: theme.space.sm,
+    backgroundColor: theme.color.accent,
+    paddingHorizontal: theme.space.lg,
+    paddingVertical: theme.space.md,
   },
 
-  editText: {
-    fontSize: 20,
+  sessionDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: theme.color.danger,
+  },
+
+  sessionLabel: {
+    flex: 1,
+    color: theme.color.bg,
+    fontSize: theme.font.size.sm,
+    fontWeight: theme.font.weight.bold,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+
+  sessionTime: {
+    color: theme.color.bg,
+    fontSize: theme.font.size.lg,
+    fontWeight: theme.font.weight.bold,
+    fontVariant: ["tabular-nums"],
+  },
+
+  sessionTimerBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(10,11,13,0.15)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  sessionTimerText: { fontSize: 16 },
+
+  sessionFinishBtn: {
+    backgroundColor: theme.color.bg,
+    paddingHorizontal: theme.space.md,
+    paddingVertical: theme.space.sm,
+    borderRadius: theme.radius.sm,
+  },
+
+  sessionFinishText: {
+    color: theme.color.accent,
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.bold,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
 
   contentContainer: {
     flex: 1,
-    backgroundColor: "#0A0B0D",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    marginTop: -24,
-    paddingTop: 24,
-    paddingHorizontal: 20,
+    backgroundColor: theme.color.bg,
+    borderTopLeftRadius: theme.radius.xl,
+    borderTopRightRadius: theme.radius.xl,
+    marginTop: -20,
+    paddingTop: theme.space.xl,
+    paddingHorizontal: theme.space.xl,
   },
 
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: theme.space.md,
   },
 
   sectionTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "white",
+    fontSize: theme.font.size.xxl,
+    fontWeight: theme.font.weight.bold,
+    color: theme.color.text,
   },
 
   exerciseCount: {
-    backgroundColor: "#1A1C1E",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    backgroundColor: theme.color.surfaceElevated,
+    paddingHorizontal: theme.space.md,
+    paddingVertical: 4,
+    borderRadius: theme.radius.sm,
   },
 
   exerciseCountText: {
-    color: "#4ADE80",
-    fontSize: 14,
-    fontWeight: "700",
+    color: theme.color.accent,
+    fontSize: theme.font.size.sm,
+    fontWeight: theme.font.weight.bold,
   },
 
-  exerciseWrapper: {
-    marginBottom: 12,
-  },
+  cardWrap: { marginBottom: theme.space.sm },
 
-  exerciseItem: {
-    backgroundColor: "#1A1C1E",
-    borderRadius: 16,
-    padding: 16,
+  card: {
+    backgroundColor: theme.color.surface,
+    borderRadius: theme.radius.lg,
+    padding: theme.space.md,
     flexDirection: "row",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    gap: theme.space.md,
   },
 
-  exerciseIconContainer: {
-    width: 48,
-    height: 48,
+  cardIconWrap: {
+    width: 44,
+    height: 44,
     borderRadius: 12,
-    backgroundColor: "rgba(74, 222, 128, 0.15)",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
   },
 
-  exerciseIcon: {
-    fontSize: 24,
+  cardIcon: { fontSize: 22 },
+
+  cardName: {
+    color: theme.color.text,
+    fontSize: theme.font.size.lg,
+    fontWeight: theme.font.weight.bold,
+    marginBottom: 4,
   },
 
-  exerciseInfo: {
-    flex: 1,
+  cardMeta: { flexDirection: "row", alignItems: "center", gap: 6 },
+
+  cardMetaText: {
+    color: theme.color.textMuted,
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.semibold,
   },
 
-  exerciseName: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "white",
-    marginBottom: 6,
+  cardDot: { color: theme.color.textDim },
+
+  cardArrow: {
+    color: theme.color.accent,
+    fontSize: theme.font.size.md,
+    fontWeight: theme.font.weight.bold,
   },
 
-  setsTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    alignSelf: "flex-start",
-  },
-
-  setsDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: "#4ADE80",
-    marginRight: 6,
-  },
-
-  exerciseSets: {
-    fontSize: 13,
-    color: "rgba(255,255,255,0.7)",
-    fontWeight: "600",
-  },
-
-  arrowContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    justifyContent: "center",
-    alignItems: "center",
+  deleteBox: {
     marginLeft: 8,
-  },
-
-  arrow: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-
-  deleteSwipe: {
-    height: 80,
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 16,
-    marginLeft: 8,
-    overflow: 'hidden',
-    shadowColor: "#FF3B30",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-
-  deleteGradient: {
     width: 80,
-    height: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  deleteIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255, 255, 255, 0.25)",
+    height: 72,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.color.danger,
     justifyContent: "center",
     alignItems: "center",
   },
 
   deleteIcon: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "700",
+    color: theme.color.text,
+    fontSize: theme.font.size.xl,
+    fontWeight: theme.font.weight.bold,
   },
 
-  emptyContainer: {
-    alignItems: "center",
-    marginTop: 60,
-    paddingHorizontal: 40,
-  },
-
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-
+  emptyContainer: { alignItems: "center", marginTop: 40, paddingHorizontal: 40 },
+  emptyIcon: { fontSize: 48, marginBottom: theme.space.md },
   emptyTitle: {
-    color: "white",
-    fontSize: 20,
-    fontWeight: "600",
-    marginBottom: 8,
+    color: theme.color.text,
+    fontSize: theme.font.size.lg,
+    fontWeight: theme.font.weight.semibold,
     textAlign: "center",
   },
-
   emptySubtitle: {
-    color: "#6E7178",
-    fontSize: 14,
+    color: theme.color.textMuted,
+    fontSize: theme.font.size.sm,
     textAlign: "center",
+    marginTop: theme.space.xs,
   },
-
   emptyText: {
-    color: "#6E7178",
+    color: theme.color.textMuted,
     textAlign: "center",
     marginTop: 50,
-    fontSize: 16,
-  },
-
-  fab: {
-    position: "absolute",
-    bottom: 30,
-    right: 20,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    overflow: "hidden",
-    shadowColor: "#4ADE80",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-
-  fabGradient: {
-    width: "100%",
-    height: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  fabText: {
-    color: "white",
-    fontSize: 32,
-    fontWeight: "700",
-    marginTop: -2,
+    fontSize: theme.font.size.md,
   },
 
   skeletonCard: {
-    backgroundColor: "#1A1C1E",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    height: 80,
+    backgroundColor: theme.color.surface,
+    borderRadius: theme.radius.lg,
+    height: 72,
+    marginBottom: theme.space.sm,
+  },
+
+  bottomBar: {
+    position: "absolute",
+    bottom: 108,
+    left: theme.space.xl,
+    right: theme.space.xl,
+    flexDirection: "row",
+    gap: theme.space.md,
+  },
+
+  startBtn: {
+    flex: 1,
+    backgroundColor: theme.color.accent,
+    borderRadius: theme.radius.lg,
+    paddingVertical: theme.space.lg,
+    alignItems: "center",
+    shadowColor: theme.color.accent,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+
+  startBtnText: {
+    color: theme.color.bg,
+    fontSize: theme.font.size.md,
+    fontWeight: theme.font.weight.bold,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+
+  fabAdd: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: theme.color.surfaceElevated,
+    borderWidth: 2,
+    borderColor: theme.color.accent,
     justifyContent: "center",
+    alignItems: "center",
   },
 
-  skeletonTitle: {
-    width: "60%",
-    height: 18,
-    backgroundColor: "#2A2C2E",
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-
-  skeletonSubtitle: {
-    width: "30%",
-    height: 14,
-    backgroundColor: "#2A2C2E",
-    borderRadius: 8,
+  fabAddText: {
+    color: theme.color.accent,
+    fontSize: 26,
+    fontWeight: theme.font.weight.bold,
+    marginTop: -2,
   },
 });

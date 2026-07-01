@@ -1,6 +1,7 @@
+import { theme } from "@/constants/theme";
+import { hapticSuccess } from "@/src/lib/haptics";
 import { addWorkout } from "@/src/lib/storage";
 import * as ImagePicker from "expo-image-picker";
-import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from "expo-router";
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -32,7 +33,6 @@ export default function CreateWorkout() {
       allowsEditing: true,
       aspect: [16, 9],
     });
-
     if (!result.canceled && result.assets.length > 0) {
       setImage(result.assets[0].uri);
     }
@@ -40,16 +40,14 @@ export default function CreateWorkout() {
 
   const createWorkout = async () => {
     if (!name.trim()) return;
-
     setIsLoading(true);
-
     await addWorkout({
       id: Date.now().toString(),
       name,
       image,
       exercises: [],
     });
-
+    hapticSuccess();
     setIsLoading(false);
     router.replace("/(tabs)");
   };
@@ -60,140 +58,63 @@ export default function CreateWorkout() {
         options={{
           headerShown: true,
           headerTitle: t("new_workout"),
-          headerStyle: {
-            backgroundColor: '#0A0B0D',
-          },
-          headerTintColor: '#667EEA',
-          headerTitleStyle: {
-            fontWeight: '700',
-            fontSize: 18,
-            color: '#fff',
-          },
+          headerStyle: { backgroundColor: theme.color.bg },
+          headerTintColor: theme.color.accent,
+          headerTitleStyle: { fontWeight: "700", fontSize: 18, color: theme.color.text },
           headerShadowVisible: false,
           headerBackTitle: t("back"),
-          headerBackTitleStyle: {
-            fontSize: 16,
-          },
           gestureEnabled: true,
-          gestureDirection: 'horizontal',
-          fullScreenGestureEnabled: true,
         }}
       />
-
       <StatusBar barStyle="light-content" />
-
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <Animated.View entering={FadeIn.duration(600)} style={styles.header}>
-            <Text style={styles.headerSubtext}>{t("create_new_label")}</Text>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <Animated.View entering={FadeIn.duration(500)}>
+            <Text style={styles.headerLabel}>{t("create_new_label")}</Text>
             <Text style={styles.title}>{t("new_workout")}</Text>
-            <Text style={styles.headerDescription}>
-              {t("build_your_workout")}
-            </Text>
+            <Text style={styles.subtitle}>{t("build_your_workout")}</Text>
           </Animated.View>
 
-          <Animated.View entering={SlideInDown.delay(200)} style={styles.section}>
-            <Text style={styles.label}>
-              <Text style={styles.labelIcon}>💪 </Text>
-              {t("workout_name")}
-            </Text>
-            <View style={styles.inputContainer}>
-              <TextInput
-                placeholder={t("workout_placeholder")}
-                placeholderTextColor="#6E7178"
-                value={name}
-                onChangeText={setName}
-                style={styles.input}
-              />
-            </View>
+          <Animated.View entering={SlideInDown.delay(150)} style={styles.section}>
+            <Text style={styles.label}>{t("workout_name")}</Text>
+            <TextInput
+              placeholder={t("workout_placeholder")}
+              placeholderTextColor={theme.color.textDim}
+              value={name}
+              onChangeText={setName}
+              style={styles.input}
+            />
           </Animated.View>
 
-          <Animated.View entering={SlideInDown.delay(400)} style={styles.section}>
-            <Text style={styles.label}>
-              <Text style={styles.labelIcon}>🖼️ </Text>
-              {t("select_photo")}
-            </Text>
-
+          <Animated.View entering={SlideInDown.delay(300)} style={styles.section}>
+            <Text style={styles.label}>{t("select_photo")}</Text>
             {image ? (
-              <View style={styles.imagePreviewContainer}>
-                <Image source={{ uri: image }} style={styles.preview} />
-                <LinearGradient
-                  colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.6)']}
-                  style={styles.previewOverlay}
-                />
-                <TouchableOpacity
-                  style={styles.changePhotoBtn}
-                  onPress={pickImage}
-                >
-                  <LinearGradient
-                    colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.15)']}
-                    style={styles.changePhotoBtnGradient}
-                  >
-                    <Text style={styles.changePhotoBtnText}>
-                      📷 {t("change_photo")}
-                    </Text>
-                  </LinearGradient>
+              <View style={styles.imgWrap}>
+                <Image source={{ uri: image }} style={styles.imgPreview} />
+                <TouchableOpacity style={styles.changeBtn} onPress={pickImage}>
+                  <Text style={styles.changeBtnText}>📷 {t("change_photo")}</Text>
                 </TouchableOpacity>
               </View>
             ) : (
-              <TouchableOpacity style={styles.photoBtn} onPress={pickImage}>
-                <LinearGradient
-                  colors={['#667EEA', '#764BA2']}
-                  style={styles.photoBtnGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <View style={styles.photoBtnContent}>
-                    <View style={styles.photoBtnIconContainer}>
-                      <Text style={styles.photoBtnIcon}>📷</Text>
-                    </View>
-                    <Text style={styles.photoBtnText}>
-                      {t("select_photo")}
-                    </Text>
-                    <Text style={styles.photoBtnSubtext}>
-                      {t("tap_to_choose_gallery")}
-                    </Text>
-                  </View>
-                </LinearGradient>
+              <TouchableOpacity style={styles.photoBox} onPress={pickImage}>
+                <Text style={styles.photoIcon}>📷</Text>
+                <Text style={styles.photoText}>{t("select_photo")}</Text>
+                <Text style={styles.photoSubtext}>{t("tap_to_choose_gallery")}</Text>
               </TouchableOpacity>
             )}
           </Animated.View>
 
-          <Animated.View entering={SlideInDown.delay(600)} style={styles.buttonContainer}>
+          <Animated.View entering={SlideInDown.delay(450)}>
             <TouchableOpacity
               style={[styles.saveBtn, !name.trim() && styles.saveBtnDisabled]}
               onPress={createWorkout}
               disabled={!name.trim() || isLoading}
             >
-              <LinearGradient
-                colors={
-                  !name.trim()
-                    ? ['#2A2C2E', '#1A1C1E']
-                    : ['#4ADE80', '#22C55E']
-                }
-                style={styles.saveBtnGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Text style={[
-                  styles.saveBtnText,
-                  !name.trim() && styles.saveBtnTextDisabled
-                ]}>
-                  {isLoading ? `⏳ ${t("creating")}` : `✨ ${t("create")}`}
-                </Text>
-              </LinearGradient>
+              <Text style={[styles.saveBtnText, !name.trim() && { color: theme.color.textMuted }]}>
+                {isLoading ? "⏳ " + t("creating") : "✨ " + t("create")}
+              </Text>
             </TouchableOpacity>
-
-            <Text style={styles.helperText}>
-              {t("add_exercises_after")}
-            </Text>
+            <Text style={styles.helperText}>{t("add_exercises_after")}</Text>
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -202,204 +123,90 @@ export default function CreateWorkout() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#0A0B0D",
-  },
+  container: { flex: 1, backgroundColor: theme.color.bg },
+  content: { padding: theme.space.xl, paddingTop: 40, paddingBottom: 60 },
 
-  scrollView: {
-    flex: 1,
-  },
-
-  scrollContent: {
-    padding: 20,
-    paddingTop: 60,
-    paddingBottom: 40,
-  },
-
-  header: {
-    marginBottom: 40,
-  },
-
-  headerSubtext: {
-    color: "#6E7178",
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 4,
-    letterSpacing: 1.5,
+  headerLabel: {
+    color: theme.color.textMuted,
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.semibold,
     textTransform: "uppercase",
+    letterSpacing: 1.5,
   },
-
   title: {
-    fontSize: 40,
-    fontWeight: "700",
-    color: "white",
-    marginBottom: 8,
-    letterSpacing: -0.5,
+    color: theme.color.text,
+    fontSize: theme.font.size.hero,
+    fontWeight: theme.font.weight.bold,
+    letterSpacing: -1,
+    marginTop: 4,
+  },
+  subtitle: {
+    color: theme.color.textMuted,
+    fontSize: theme.font.size.md,
+    marginTop: 4,
+    marginBottom: theme.space.xxl,
   },
 
-  headerDescription: {
-    color: "#6E7178",
-    fontSize: 16,
-    fontWeight: "500",
-  },
-
-  section: {
-    marginBottom: 32,
-  },
+  section: { marginBottom: theme.space.xl },
 
   label: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "white",
-    marginBottom: 12,
-  },
-
-  labelIcon: {
-    fontSize: 20,
-  },
-
-  inputContainer: {
-    backgroundColor: "#1A1C1E",
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: "#2A2C2E",
-    overflow: "hidden",
+    color: theme.color.text,
+    fontSize: theme.font.size.md,
+    fontWeight: theme.font.weight.bold,
+    marginBottom: theme.space.sm,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
   },
 
   input: {
-    padding: 18,
-    fontSize: 16,
-    color: "white",
-    fontWeight: "500",
+    backgroundColor: theme.color.surface,
+    borderRadius: theme.radius.lg,
+    padding: theme.space.lg,
+    color: theme.color.text,
+    fontSize: theme.font.size.md,
+    fontWeight: theme.font.weight.semibold,
   },
 
-  photoBtn: {
-    borderRadius: 16,
-    overflow: "hidden",
-    shadowColor: "#667EEA",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-
-  photoBtnGradient: {
-    padding: 32,
+  photoBox: {
+    backgroundColor: theme.color.surface,
+    borderRadius: theme.radius.lg,
+    padding: theme.space.xxxl,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    borderStyle: "dashed",
   },
+  photoIcon: { fontSize: 40, marginBottom: theme.space.sm },
+  photoText: { color: theme.color.text, fontSize: theme.font.size.md, fontWeight: theme.font.weight.bold },
+  photoSubtext: { color: theme.color.textMuted, fontSize: theme.font.size.xs, marginTop: 4 },
 
-  photoBtnContent: {
-    alignItems: "center",
-  },
-
-  photoBtnIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-
-  photoBtnIcon: {
-    fontSize: 32,
-  },
-
-  photoBtnText: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-
-  photoBtnSubtext: {
-    color: "rgba(255,255,255,0.7)",
-    fontSize: 14,
-    fontWeight: "500",
-  },
-
-  imagePreviewContainer: {
-    position: "relative",
-    borderRadius: 20,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-
-  preview: {
-    width: "100%",
-    height: 220,
-    resizeMode: "cover",
-  },
-
-  previewOverlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
-
-  changePhotoBtn: {
+  imgWrap: { borderRadius: theme.radius.lg, overflow: "hidden", position: "relative" },
+  imgPreview: { width: "100%", height: 200, resizeMode: "cover" },
+  changeBtn: {
     position: "absolute",
-    bottom: 16,
-    left: 16,
-    right: 16,
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-
-  changePhotoBtnGradient: {
-    padding: 14,
+    bottom: theme.space.md,
+    left: theme.space.md,
+    right: theme.space.md,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    padding: theme.space.sm,
+    borderRadius: theme.radius.sm,
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.2)",
   },
-
-  changePhotoBtnText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-
-  buttonContainer: {
-    marginTop: 20,
-  },
+  changeBtnText: { color: theme.color.text, fontSize: theme.font.size.sm, fontWeight: theme.font.weight.bold },
 
   saveBtn: {
-    borderRadius: 16,
-    overflow: "hidden",
-    shadowColor: "#4ADE80",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-
-  saveBtnDisabled: {
-    shadowOpacity: 0,
-  },
-
-  saveBtnGradient: {
-    paddingVertical: 20,
+    backgroundColor: theme.color.accent,
+    borderRadius: theme.radius.lg,
+    paddingVertical: theme.space.xl,
     alignItems: "center",
   },
-
-  saveBtnText: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "700",
-  },
-
-  saveBtnTextDisabled: {
-    color: "#6E7178",
-  },
+  saveBtnDisabled: { backgroundColor: theme.color.surface },
+  saveBtnText: { color: theme.color.bg, fontSize: theme.font.size.lg, fontWeight: theme.font.weight.bold },
 
   helperText: {
-    color: "#6E7178",
-    fontSize: 14,
+    color: theme.color.textMuted,
+    fontSize: theme.font.size.xs,
     textAlign: "center",
-    marginTop: 16,
-    fontWeight: "500",
+    marginTop: theme.space.md,
   },
 });

@@ -1,5 +1,7 @@
+import TodaySummary from "@/components/today-summary";
+import { theme } from "@/constants/theme";
+import { hapticTap } from "@/src/lib/haptics";
 import { deleteWorkout, getWorkouts, type Workout } from "@/src/lib/storage";
-import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -17,48 +19,23 @@ import {
 } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 
-const CARD_HEIGHT = 120;
+const CARD_HEIGHT = 100;
 
 const SkeletonCard = ({ delay = 0 }: { delay?: number }) => {
   const pulseAnim = useRef(new Animated.Value(0)).current;
-
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1000,
-          delay,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 0,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1000, delay, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0, duration: 1000, useNativeDriver: true }),
       ])
     ).start();
   }, [delay, pulseAnim]);
-
-  const opacity = pulseAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.3, 0.7],
-  });
-
-  return (
-    <Animated.View style={[styles.skeletonCard, { opacity }]}>
-      <View style={styles.skeletonContent}>
-        <View>
-          <View style={styles.skeletonTitle} />
-          <View style={styles.skeletonSubtitle} />
-        </View>
-        <View style={styles.skeletonImage} />
-      </View>
-    </Animated.View>
-  );
+  const opacity = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.7] });
+  return <Animated.View style={[styles.skeletonCard, { opacity }]} />;
 };
 
-const AnimatedWorkoutCard = ({
+const WorkoutCard = ({
   item,
   index,
   onDelete,
@@ -71,79 +48,44 @@ const AnimatedWorkoutCard = ({
 }) => {
   const { t } = useTranslation();
   const scaleAnim = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(50)).current;
+  const translateY = useRef(new Animated.Value(30)).current;
   const swipeableRef = useRef<Swipeable>(null);
 
   useEffect(() => {
     Animated.parallel([
       Animated.spring(scaleAnim, {
         toValue: 1,
-        delay: index * 100,
+        delay: index * 60,
         useNativeDriver: true,
-        tension: 50,
-        friction: 7,
+        tension: 60,
+        friction: 8,
       }),
       Animated.timing(translateY, {
         toValue: 0,
-        delay: index * 100,
-        duration: 400,
+        delay: index * 60,
+        duration: 300,
         useNativeDriver: true,
       }),
     ]).start();
   }, [index, scaleAnim, translateY]);
 
-  const handlePressIn = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 0.95,
-      useNativeDriver: true,
-      tension: 100,
-    }).start();
-  };
-
-  const handlePressOut = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      useNativeDriver: true,
-      tension: 100,
-    }).start();
-  };
-
-  const renderRightActions = (_progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
-    const scale = dragX.interpolate({
-      inputRange: [-100, 0],
-      outputRange: [1, 0.5],
-      extrapolate: 'clamp',
-    });
-
+  const renderRightActions = (
+    _p: Animated.AnimatedInterpolation<number>,
+    dragX: Animated.AnimatedInterpolation<number>
+  ) => {
     const opacity = dragX.interpolate({
       inputRange: [-100, -50, 0],
       outputRange: [1, 0.7, 0],
-      extrapolate: 'clamp',
+      extrapolate: "clamp",
     });
-
     return (
-      <Animated.View
-        style={[
-          { height: CARD_HEIGHT, justifyContent: "center" },
-          { opacity, transform: [{ scale }] }
-        ]}
-      >
+      <Animated.View style={[{ height: CARD_HEIGHT, justifyContent: "center" }, { opacity }]}>
         <TouchableOpacity
           onPress={() => onDelete(item.id, swipeableRef)}
-          style={[styles.deleteSwipe, { height: CARD_HEIGHT }]}
-          activeOpacity={0.7}
+          style={styles.deleteSwipe}
         >
-          <LinearGradient
-            colors={['#FF3B30', '#C62828']}
-            style={styles.deleteGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.deleteIconContainer}>
-              <Text style={styles.deleteIcon}>✕</Text>
-            </View>
-            <Text style={styles.deleteSwipeText}>{t("delete")}</Text>
-          </LinearGradient>
+          <Text style={styles.deleteIcon}>✕</Text>
+          <Text style={styles.deleteLabel}>{t("delete")}</Text>
         </TouchableOpacity>
       </Animated.View>
     );
@@ -151,12 +93,7 @@ const AnimatedWorkoutCard = ({
 
   return (
     <Animated.View
-      style={[
-        styles.swipeWrapper,
-        {
-          transform: [{ scale: scaleAnim }, { translateY }],
-        }
-      ]}
+      style={[styles.cardWrapper, { transform: [{ scale: scaleAnim }, { translateY }] }]}
     >
       <Swipeable
         ref={swipeableRef}
@@ -165,45 +102,26 @@ const AnimatedWorkoutCard = ({
         friction={2}
         rightThreshold={40}
       >
-        <TouchableOpacity
-          activeOpacity={1}
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
-          onPress={() => onPress(item.id)}
-        >
+        <TouchableOpacity activeOpacity={0.85} onPress={() => onPress(item.id)}>
           <View style={styles.card}>
-            <Image
-              source={{
-                uri: item.image
-                  ? item.image
-                  : "https://images.unsplash.com/photo-1605296867304-46d5465a13f1?q=80&w=800&auto=format&fit=crop",
-              }}
-              style={styles.cardBackground}
-              blurRadius={1}
-            />
-
-            <LinearGradient
-              colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.8)']}
-              style={styles.gradientOverlay}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-            />
-
+            {item.image && (
+              <Image source={{ uri: item.image }} style={styles.cardImage} blurRadius={0.5} />
+            )}
+            <View style={styles.cardOverlay} />
             <View style={styles.cardContent}>
-              <View style={styles.cardInfo}>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.cardTitle} numberOfLines={1}>
                   {item.name}
                 </Text>
-                <View style={styles.exerciseTag}>
-                  <View style={styles.exerciseDot} />
-                  <Text style={styles.cardSubtitle}>
+                <View style={styles.cardTag}>
+                  <View style={styles.cardTagDot} />
+                  <Text style={styles.cardTagText}>
                     {item.exercises?.length || 0} {t("exercises")}
                   </Text>
                 </View>
               </View>
-
-              <View style={styles.arrowContainer}>
-                <Text style={styles.arrow}>→</Text>
+              <View style={styles.cardArrow}>
+                <Text style={styles.cardArrowText}>→</Text>
               </View>
             </View>
           </View>
@@ -256,53 +174,42 @@ export default function Home() {
           text: t("delete"),
           style: "destructive",
           onPress: async () => {
+            hapticTap();
             await deleteWorkout(id);
             setWorkouts((prev) => prev.filter((w) => w.id !== id));
           },
         },
       ],
-      {
-        cancelable: true,
-        userInterfaceStyle: 'dark',
-      }
+      { cancelable: true, userInterfaceStyle: "dark" }
     );
   };
 
-  const renderWorkout = ({ item, index }: { item: Workout; index: number }) => (
-    <AnimatedWorkoutCard
-      item={item}
-      index={index}
-      onDelete={handleDeleteWorkout}
-      onPress={(id) => router.push(`/workouts/${id}`)}
-    />
-  );
-
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
+        {/* Header */}
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.headerSubtext}>{t("my_workouts")}</Text>
-            <Text style={styles.headerText}>{t("workouts")}</Text>
+            <Text style={styles.subtitle}>{t("my_workouts")}</Text>
+            <Text style={styles.title}>{t("workouts")}</Text>
           </View>
-
           <TouchableOpacity
-            onPress={() => router.push("/create-workout")}
+            onPress={() => {
+              hapticTap();
+              router.push("/create-workout");
+            }}
             style={styles.addBtn}
           >
-            <LinearGradient
-              colors={['#667EEA', '#764BA2']}
-              style={styles.addBtnGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Text style={styles.addBtnText}>+</Text>
-            </LinearGradient>
+            <Text style={styles.addBtnText}>+</Text>
           </TouchableOpacity>
         </View>
 
+        {/* Today ring */}
+        <TodaySummary />
+
+        {/* Workouts */}
         {loading ? (
-          <View style={{ paddingTop: 8 }}>
+          <View>
             {[0, 1, 2, 3].map((i) => (
               <SkeletonCard key={i} delay={i * 100} />
             ))}
@@ -311,24 +218,28 @@ export default function Home() {
           <FlatList
             data={workouts}
             keyExtractor={(item) => item.id}
-            renderItem={renderWorkout}
-            contentContainerStyle={{ paddingBottom: 40, paddingTop: 8 }}
+            renderItem={({ item, index }) => (
+              <WorkoutCard
+                item={item}
+                index={index}
+                onDelete={handleDeleteWorkout}
+                onPress={(id) => router.push(`/workouts/${id}`)}
+              />
+            )}
+            contentContainerStyle={{ paddingBottom: 120 }}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                tintColor="#667EEA"
-                colors={['#667EEA', '#764BA2']}
+                tintColor={theme.color.accent}
               />
             }
             ListEmptyComponent={
-              <View style={styles.emptyContainer}>
+              <View style={styles.emptyBox}>
                 <Text style={styles.emptyIcon}>💪</Text>
                 <Text style={styles.emptyTitle}>{t("no_workouts")}</Text>
-                <Text style={styles.emptySubtitle}>
-                  {t("tap_plus_first_workout")}
-                </Text>
+                <Text style={styles.emptySub}>{t("tap_plus_first_workout")}</Text>
               </View>
             }
           />
@@ -339,257 +250,166 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#0A0B0D",
-  },
-
-  container: {
-    flex: 1,
-    backgroundColor: "#0A0B0D",
-    paddingHorizontal: 20,
-  },
+  safe: { flex: 1, backgroundColor: theme.color.bg },
+  container: { flex: 1, backgroundColor: theme.color.bg, paddingHorizontal: theme.space.xl },
 
   headerRow: {
-    paddingTop: 16,
-    paddingBottom: 20,
+    paddingTop: theme.space.lg,
+    paddingBottom: theme.space.lg,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-
-  headerSubtext: {
-    color: "#6E7178",
-    fontSize: 16,
-    fontWeight: "500",
-    marginBottom: -4,
+  subtitle: {
+    color: theme.color.textMuted,
+    fontSize: theme.font.size.sm,
+    fontWeight: theme.font.weight.semibold,
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
   },
-
-  headerText: {
-    color: "white",
-    fontSize: 36,
-    fontWeight: "700",
-    letterSpacing: -0.5,
+  title: {
+    color: theme.color.text,
+    fontSize: theme.font.size.hero,
+    fontWeight: theme.font.weight.bold,
+    letterSpacing: -1,
   },
-
   addBtn: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: "#667EEA",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-
-  addBtnGradient: {
-    width: 56,
-    height: 56,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: theme.color.accent,
     justifyContent: "center",
     alignItems: "center",
   },
-
   addBtnText: {
-    color: "white",
+    color: theme.color.bg,
     fontSize: 28,
-    fontWeight: "600",
+    fontWeight: theme.font.weight.bold,
     marginTop: -2,
   },
 
-  emptyContainer: {
-    alignItems: "center",
-    marginTop: 80,
-    paddingHorizontal: 40,
-  },
-
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-
-  emptyTitle: {
-    color: "white",
-    fontSize: 20,
-    fontWeight: "600",
-    marginBottom: 8,
-    textAlign: "center",
-  },
-
-  emptySubtitle: {
-    color: "#6E7178",
-    fontSize: 14,
-    textAlign: "center",
-  },
-
-  swipeWrapper: {
-    marginBottom: 16,
-  },
-
-  deleteSwipe: {
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 20,
-    marginLeft: 8,
-    overflow: 'hidden',
-    shadowColor: "#FF3B30",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-
-  deleteGradient: {
-    flex: 1,
-    width: 100,
-    justifyContent: "center",
-    alignItems: "center",
-    flexDirection: "column",
-    gap: 4,
-  },
-
-  deleteIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255, 255, 255, 0.25)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  deleteIcon: {
-    color: "white",
-    fontSize: 20,
-    fontWeight: "700",
-  },
-
-  deleteSwipeText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
+  cardWrapper: { marginBottom: theme.space.md },
 
   card: {
     height: CARD_HEIGHT,
-    borderRadius: 20,
+    borderRadius: theme.radius.lg,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 5,
+    backgroundColor: theme.color.surface,
   },
 
-  cardBackground: {
+  cardImage: {
     position: "absolute",
     width: "100%",
     height: "100%",
     resizeMode: "cover",
   },
 
-  gradientOverlay: {
-    position: "absolute",
-    width: "100%",
-    height: "100%",
+  cardOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(10,11,13,0.55)",
   },
 
   cardContent: {
     flex: 1,
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-  },
-
-  cardInfo: {
-    flex: 1,
-    justifyContent: "center",
+    paddingHorizontal: theme.space.lg,
+    gap: theme.space.md,
   },
 
   cardTitle: {
-    color: "white",
-    fontSize: 24,
-    fontWeight: "700",
-    marginBottom: 8,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+    color: theme.color.text,
+    fontSize: theme.font.size.xl,
+    fontWeight: theme.font.weight.bold,
+    marginBottom: theme.space.xs,
   },
 
-  exerciseTag: {
+  cardTag: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.15)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    backgroundColor: theme.color.accentSoft,
+    paddingHorizontal: theme.space.sm,
+    paddingVertical: 4,
+    borderRadius: theme.radius.sm,
     alignSelf: "flex-start",
+    gap: 6,
   },
 
-  exerciseDot: {
+  cardTagDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#4ADE80",
-    marginRight: 6,
+    backgroundColor: theme.color.accent,
   },
 
-  cardSubtitle: {
-    color: "white",
-    fontSize: 13,
-    fontWeight: "600",
+  cardTagText: {
+    color: theme.color.accent,
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.bold,
   },
 
-  arrowContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+  cardArrow: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.color.accent,
     justifyContent: "center",
     alignItems: "center",
   },
 
-  arrow: {
-    color: "white",
-    fontSize: 20,
-    fontWeight: "600",
+  cardArrowText: {
+    color: theme.color.bg,
+    fontSize: theme.font.size.md,
+    fontWeight: theme.font.weight.bold,
+  },
+
+  deleteSwipe: {
+    width: 90,
+    height: CARD_HEIGHT,
+    marginLeft: 8,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.color.danger,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 4,
+  },
+
+  deleteIcon: {
+    color: theme.color.text,
+    fontSize: theme.font.size.xl,
+    fontWeight: theme.font.weight.bold,
+  },
+
+  deleteLabel: {
+    color: theme.color.text,
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.bold,
   },
 
   skeletonCard: {
     height: CARD_HEIGHT,
-    backgroundColor: "#1A1C1E",
-    borderRadius: 20,
-    marginBottom: 16,
-    padding: 20,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.color.surface,
+    marginBottom: theme.space.md,
   },
 
-  skeletonContent: {
-    flex: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
+  emptyBox: {
     alignItems: "center",
+    marginTop: 60,
+    paddingHorizontal: 40,
   },
 
-  skeletonTitle: {
-    width: 150,
-    height: 24,
-    backgroundColor: "#2A2C2E",
-    borderRadius: 8,
-    marginBottom: 12,
+  emptyIcon: { fontSize: 56, marginBottom: theme.space.md },
+  emptyTitle: {
+    color: theme.color.text,
+    fontSize: theme.font.size.lg,
+    fontWeight: theme.font.weight.bold,
+    marginBottom: theme.space.sm,
+    textAlign: "center",
   },
-
-  skeletonSubtitle: {
-    width: 100,
-    height: 16,
-    backgroundColor: "#2A2C2E",
-    borderRadius: 8,
-  },
-
-  skeletonImage: {
-    width: 80,
-    height: 80,
-    backgroundColor: "#2A2C2E",
-    borderRadius: 12,
+  emptySub: {
+    color: theme.color.textMuted,
+    fontSize: theme.font.size.sm,
+    textAlign: "center",
   },
 });

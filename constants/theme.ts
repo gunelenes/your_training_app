@@ -1,41 +1,97 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+/**
+ * "Neon strength" palette — flat dark surfaces + single lime accent.
+ * Use `theme.color.accent` everywhere instead of hardcoding hex values.
+ */
+export const theme = {
+  color: {
+    // Surfaces
+    bg: '#0A0B0D',
+    surface: '#141618',
+    surfaceElevated: '#1A1D20',
+    surfaceMuted: '#0F1113',
+    border: '#22262A',
+
+    // Text
+    text: '#F5F5F5',
+    textMuted: '#8B9096',
+    textDim: '#5C6167',
+
+    // Accent (neon lime — single accent hero color)
+    accent: '#C6FF00',
+    accentSoft: 'rgba(198, 255, 0, 0.15)',
+    accentPressed: '#A8DC00',
+
+    // Status
+    success: '#4ADE80',
+    danger: '#FF453A',
+    warning: '#FFB020',
+    info: '#5AC8FA',
+  },
+
+  radius: {
+    sm: 8,
+    md: 12,
+    lg: 16,
+    xl: 20,
+    pill: 999,
+  },
+
+  space: {
+    xs: 4,
+    sm: 8,
+    md: 12,
+    lg: 16,
+    xl: 20,
+    xxl: 24,
+    xxxl: 32,
+  },
+
+  font: {
+    size: {
+      xs: 11,
+      sm: 13,
+      md: 15,
+      lg: 17,
+      xl: 20,
+      xxl: 24,
+      display: 32,
+      hero: 40,
+    },
+    weight: {
+      regular: '400' as const,
+      medium: '500' as const,
+      semibold: '600' as const,
+      bold: '700' as const,
+    },
+  },
+};
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    text: theme.color.text,
+    background: theme.color.bg,
+    tint: theme.color.accent,
+    icon: theme.color.textMuted,
+    tabIconDefault: theme.color.textMuted,
+    tabIconSelected: theme.color.accent,
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    text: theme.color.text,
+    background: theme.color.bg,
+    tint: theme.color.accent,
+    icon: theme.color.textMuted,
+    tabIconDefault: theme.color.textMuted,
+    tabIconSelected: theme.color.accent,
   },
 };
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {

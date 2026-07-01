@@ -1,16 +1,17 @@
+import { theme } from "@/constants/theme";
+import { hapticTap } from "@/src/lib/haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-    Animated,
-    AppState,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Animated,
+  AppState,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -37,13 +38,9 @@ export default function Water() {
   const saveHistory = useCallback(async (date: string, amount: number) => {
     const raw = await AsyncStorage.getItem("WATER_HISTORY");
     const list: HistoryItem[] = raw ? JSON.parse(raw) : [];
-
     const existing = list.find((h) => h.date === date);
-    if (existing) {
-      existing.amount = amount;
-    } else {
-      list.push({ date, amount });
-    }
+    if (existing) existing.amount = amount;
+    else list.push({ date, amount });
     await AsyncStorage.setItem("WATER_HISTORY", JSON.stringify(list));
     setHistory(list);
   }, []);
@@ -51,15 +48,12 @@ export default function Water() {
   const handleDailyReset = useCallback(async () => {
     const todayKey = getDateKey(new Date());
     const lastDate = await AsyncStorage.getItem("LAST_WATER_DATE");
-
     if (lastDate !== todayKey) {
       const prevRaw = await AsyncStorage.getItem("DAILY_WATER");
       const prevAmount = prevRaw ? Number(prevRaw) : 0;
-
       if (prevAmount > 0 && lastDate) {
         await saveHistory(lastDate, prevAmount);
       }
-
       await AsyncStorage.setItem("DAILY_WATER", "0");
       await AsyncStorage.setItem("LAST_WATER_DATE", todayKey);
       setWater(0);
@@ -88,25 +82,15 @@ export default function Water() {
 
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 0,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1500, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0, duration: 1500, useNativeDriver: true }),
       ])
     ).start();
   }, [handleDailyReset, pulseAnim]);
 
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
-      if (state === "active") {
-        handleDailyReset();
-      }
+      if (state === "active") handleDailyReset();
     });
     return () => sub.remove();
   }, [handleDailyReset]);
@@ -120,12 +104,11 @@ export default function Water() {
   }, [water, dailyGoal, progressAnim]);
 
   const addWater = async (amount: number) => {
+    hapticTap();
     const todayKey = getDateKey(new Date());
     let newAmount = water + amount;
     if (newAmount < 0) newAmount = 0;
-
     setWater(newAmount);
-
     await AsyncStorage.setItem("DAILY_WATER", newAmount.toString());
     await AsyncStorage.setItem("LAST_WATER_DATE", todayKey);
   };
@@ -139,6 +122,7 @@ export default function Water() {
   };
 
   const updateGoal = async (delta: number) => {
+    hapticTap();
     const g = Math.max(500, dailyGoal + delta);
     setDailyGoal(g);
     await AsyncStorage.setItem("WATER_GOAL", g.toString());
@@ -161,26 +145,18 @@ export default function Water() {
   const getWeeklyData = () => {
     const combined = [...history];
     const todayEntry = combined.find((x) => x.date === todayKey);
-
     if (!todayEntry) combined.push({ date: todayKey, amount: water });
     else todayEntry.amount = water;
 
     const arr = [];
-
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(today.getDate() - i);
-
       const dateKey = getDateKey(d);
       const record = combined.find((x) => x.date === dateKey);
-
       const key = getDayKey(d);
       const label = t(`days_short.${key}`);
-
-      arr.push({
-        label,
-        amount: record ? record.amount : 0,
-      });
+      arr.push({ label, amount: record ? record.amount : 0 });
     }
     return arr;
   };
@@ -188,123 +164,95 @@ export default function Water() {
   const weeklyData = getWeeklyData();
   const maxWeekly = Math.max(...weeklyData.map((x) => x.amount), dailyGoal);
 
-  const monthlyTotal = (() => {
-    const combined = [...history];
-    const tE = combined.find((x) => x.date === todayKey);
-
-    if (!tE) combined.push({ date: todayKey, amount: water });
-    else tE.amount = water;
-
-    return combined.reduce((sum, x) => {
-      const [y, m] = x.date.split("-");
-      if (
-        Number(m) === today.getMonth() + 1 &&
-        Number(y) === today.getFullYear()
-      ) {
-        return sum + x.amount;
-      }
-      return sum;
-    }, 0);
-  })();
-
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ["0%", "100%"],
   });
-
-  const pulseScale = pulseAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.1],
-  });
-
-  const pulseOpacity = pulseAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.15, 0],
-  });
-
+  const pulseScale = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.1] });
+  const pulseOpacity = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.2, 0] });
   const percent = Math.min((water / dailyGoal) * 100, 100);
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 32 }}>
-
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 120 }}>
+        <Text style={styles.headerLabel}>{t("today")}</Text>
         <Text style={styles.headerTitle}>{t("water_intake")}</Text>
-        <Text style={styles.headerSubtitle}>
-          {t("daily_goal")}: {dailyGoal} ml
-        </Text>
 
-        <View style={styles.progressWrapper}>
+        {/* Ring */}
+        <View style={styles.ringWrap}>
           <Animated.View
-            style={[
-              styles.pulseCircle,
-              { transform: [{ scale: pulseScale }], opacity: pulseOpacity },
-            ]}
+            style={[styles.pulseCircle, { transform: [{ scale: pulseScale }], opacity: pulseOpacity }]}
           />
-          <View style={styles.circle}>
-            <Text style={styles.circleText}>{water} ml</Text>
-            <Text style={styles.percentText}>{percent.toFixed(0)}%</Text>
+          <View style={styles.ring}>
+            <Text style={styles.ringValue}>{water}</Text>
+            <Text style={styles.ringUnit}>ml</Text>
+            <Text style={styles.ringPct}>{percent.toFixed(0)}%</Text>
           </View>
         </View>
 
-        <View style={styles.progressBarTrack}>
-          <Animated.View style={[styles.progressBarFill, { width: progressWidth }]}>
-            <LinearGradient colors={["#667EEA", "#764BA2"]} style={{ flex: 1 }} />
-          </Animated.View>
+        <View style={styles.progressTrack}>
+          <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
         </View>
 
+        <Text style={styles.goalText}>
+          {t("daily_goal")}: <Text style={{ color: theme.color.accent }}>{dailyGoal} ml</Text>
+        </Text>
+
+        {/* Quick add */}
         <View style={styles.quickRow}>
           {[250, 500, 750].map((ml) => (
-            <TouchableOpacity key={ml} onPress={() => addWater(ml)}>
-              <LinearGradient colors={["#667EEA", "#764BA2"]} style={styles.quickBtn}>
-                <Text style={styles.quickBtnText}>+{ml} ml</Text>
-              </LinearGradient>
+            <TouchableOpacity
+              key={ml}
+              onPress={() => addWater(ml)}
+              style={styles.quickBtn}
+            >
+              <Text style={styles.quickBtnText}>+{ml}</Text>
+              <Text style={styles.quickBtnUnit}>ml</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-
+        {/* Manual input */}
         <View style={styles.inputRow}>
           <TextInput
             style={styles.input}
             placeholder="300  /  -200"
-            placeholderTextColor="#6E7178"
+            placeholderTextColor={theme.color.textDim}
             keyboardType="numbers-and-punctuation"
             value={inputValue}
             onChangeText={setInputValue}
           />
-
-          <TouchableOpacity onPress={addManual}>
-            <LinearGradient colors={["#667EEA", "#764BA2"]} style={styles.inputBtn}>
-              <Text style={styles.inputBtnText}>{t("add")}</Text>
-            </LinearGradient>
+          <TouchableOpacity onPress={addManual} style={styles.addBtn}>
+            <Text style={styles.addBtnText}>{t("add")}</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.goalCard}>
-          <Text style={styles.sectionTitle}>{t("daily_goal")}</Text>
-          <Text style={styles.goalValue}>{dailyGoal} ml</Text>
-
-          <View style={styles.goalButtonsRow}>
+        {/* Goal */}
+        <View style={styles.card}>
+          <Text style={styles.cardLabel}>{t("daily_goal")}</Text>
+          <View style={styles.goalRow}>
             <TouchableOpacity onPress={() => updateGoal(-250)} style={styles.goalBtn}>
-              <Text style={styles.goalBtnText}>-250</Text>
+              <Text style={styles.goalBtnText}>−</Text>
             </TouchableOpacity>
-
+            <Text style={styles.goalValue}>{dailyGoal} ml</Text>
             <TouchableOpacity onPress={() => updateGoal(250)} style={styles.goalBtn}>
-              <Text style={styles.goalBtnText}>+250</Text>
+              <Text style={styles.goalBtnText}>+</Text>
             </TouchableOpacity>
           </View>
         </View>
 
+        {/* Weekly */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>{t("weekly_overview")}</Text>
-
+          <Text style={styles.cardLabel}>{t("weekly_overview")}</Text>
           <View style={styles.barRow}>
             {weeklyData.map((d, i) => {
-              const height = (d.amount / maxWeekly) * 120;
+              const height = (d.amount / maxWeekly) * 100;
               return (
                 <View key={i} style={styles.barItem}>
                   <View style={styles.barTrack}>
-                    <View style={[styles.barFill, { height }]} />
+                    <View
+                      style={[styles.barFill, { height, backgroundColor: theme.color.accent }]}
+                    />
                   </View>
                   <Text style={styles.barLabel}>{d.label}</Text>
                 </View>
@@ -312,187 +260,175 @@ export default function Water() {
             })}
           </View>
         </View>
-
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>{t("monthly_total")}</Text>
-          <Text style={styles.monthlyValue}>{monthlyTotal} ml</Text>
-        </View>
-
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-
-
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#0A0B0D" },
-  container: { flex: 1, paddingHorizontal: 20, paddingTop: 16 },
+  safe: { flex: 1, backgroundColor: theme.color.bg },
+  container: { flex: 1, paddingHorizontal: theme.space.xl, paddingTop: theme.space.lg },
 
+  headerLabel: {
+    color: theme.color.textMuted,
+    fontSize: theme.font.size.sm,
+    fontWeight: theme.font.weight.semibold,
+    textTransform: "uppercase",
+    letterSpacing: 1.5,
+  },
   headerTitle: {
-    fontSize: 34,
-    color: "white",
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    color: "#6E7178",
-    fontSize: 16,
-    marginBottom: 20,
+    color: theme.color.text,
+    fontSize: theme.font.size.hero,
+    fontWeight: theme.font.weight.bold,
+    letterSpacing: -1,
+    marginBottom: theme.space.xxl,
   },
 
-  progressWrapper: { alignItems: "center", marginBottom: 24 },
+  ringWrap: { alignItems: "center", marginBottom: theme.space.xl },
 
   pulseCircle: {
     position: "absolute",
     width: 220,
     height: 220,
-    borderRadius: 220,
-    backgroundColor: "#667EEA",
+    borderRadius: 110,
+    backgroundColor: theme.color.accent,
   },
 
-  circle: {
+  ring: {
     width: 190,
     height: 190,
-    borderRadius: 190,
-    borderWidth: 8,
-    borderColor: "#667EEA",
-    backgroundColor: "#111216",
+    borderRadius: 95,
+    borderWidth: 6,
+    borderColor: theme.color.accent,
+    backgroundColor: theme.color.surface,
     justifyContent: "center",
     alignItems: "center",
   },
-
-  circleText: { color: "white", fontSize: 26, fontWeight: "700" },
-  percentText: { color: "#6E7178", marginTop: 6 },
-
-  progressBarTrack: {
-    height: 10,
-    backgroundColor: "#1A1C1E",
-    borderRadius: 999,
-    marginBottom: 24,
-    overflow: "hidden",
+  ringValue: {
+    color: theme.color.text,
+    fontSize: 44,
+    fontWeight: theme.font.weight.bold,
+    letterSpacing: -1,
   },
-  progressBarFill: { height: "100%", borderRadius: 999 },
+  ringUnit: { color: theme.color.textMuted, fontSize: theme.font.size.sm, marginTop: -4 },
+  ringPct: { color: theme.color.accent, fontSize: theme.font.size.sm, marginTop: 4, fontWeight: theme.font.weight.bold },
+
+  progressTrack: {
+    height: 8,
+    backgroundColor: theme.color.surface,
+    borderRadius: 4,
+    overflow: "hidden",
+    marginBottom: theme.space.md,
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: theme.color.accent,
+  },
+
+  goalText: {
+    color: theme.color.textMuted,
+    fontSize: theme.font.size.sm,
+    marginBottom: theme.space.lg,
+    textAlign: "center",
+  },
 
   quickRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 16,
+    gap: theme.space.md,
+    marginBottom: theme.space.lg,
   },
 
   quickBtn: {
-    width: 100,
-    paddingVertical: 12,
-    borderRadius: 16,
+    flex: 1,
+    backgroundColor: theme.color.surface,
+    paddingVertical: theme.space.lg,
+    borderRadius: theme.radius.lg,
     alignItems: "center",
-    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: theme.color.border,
   },
-  quickBtnText: { color: "white", fontSize: 15, fontWeight: "600" },
+  quickBtnText: {
+    color: theme.color.accent,
+    fontSize: theme.font.size.lg,
+    fontWeight: theme.font.weight.bold,
+  },
+  quickBtnUnit: { color: theme.color.textMuted, fontSize: theme.font.size.xs },
 
   inputRow: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 20,
+    gap: theme.space.md,
+    marginBottom: theme.space.xl,
   },
-
   input: {
     flex: 1,
     height: 48,
-    backgroundColor: "#1A1C1E",
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    color: "white",
+    backgroundColor: theme.color.surface,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.space.md,
+    color: theme.color.text,
+    fontSize: theme.font.size.md,
+    fontWeight: theme.font.weight.semibold,
   },
-
-  inputBtn: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
+  addBtn: {
+    paddingHorizontal: theme.space.xl,
+    justifyContent: "center",
+    backgroundColor: theme.color.accent,
+    borderRadius: theme.radius.md,
   },
-  inputBtnText: { color: "white", fontSize: 16, fontWeight: "600" },
-
-  goalCard: {
-    backgroundColor: "#111216",
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 16,
-  },
-
-  sectionTitle: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-
-  goalValue: {
-    color: "#667EEA",
-    fontSize: 22,
-    fontWeight: "700",
-    marginBottom: 10,
-  },
-
-  goalButtonsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-
-  goalBtn: {
-    flex: 1,
-    backgroundColor: "#1A1C1E",
-    paddingVertical: 10,
-    marginHorizontal: 4,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  goalBtnText: {
-    color: "white",
-    fontSize: 15,
-    fontWeight: "600",
+  addBtnText: {
+    color: theme.color.bg,
+    fontSize: theme.font.size.md,
+    fontWeight: theme.font.weight.bold,
   },
 
   card: {
-    backgroundColor: "#111216",
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 16,
+    backgroundColor: theme.color.surface,
+    borderRadius: theme.radius.lg,
+    padding: theme.space.lg,
+    marginBottom: theme.space.md,
   },
-
-  barRow: {
+  cardLabel: {
+    color: theme.color.textMuted,
+    fontSize: theme.font.size.xs,
+    fontWeight: theme.font.weight.semibold,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: theme.space.md,
+  },
+  goalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-  },
-
-  barItem: {
     alignItems: "center",
-    flex: 1,
+  },
+  goalBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: theme.color.surfaceMuted,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  goalBtnText: { color: theme.color.text, fontSize: theme.font.size.xl, fontWeight: theme.font.weight.bold },
+  goalValue: {
+    color: theme.color.text,
+    fontSize: theme.font.size.xl,
+    fontWeight: theme.font.weight.bold,
   },
 
+  barRow: { flexDirection: "row", justifyContent: "space-between", height: 140 },
+  barItem: { alignItems: "center", flex: 1 },
   barTrack: {
-    width: 14,
-    height: 120,
-    backgroundColor: "#1A1C1E",
-    borderRadius: 999,
+    width: 12,
+    height: 100,
+    backgroundColor: theme.color.surfaceMuted,
+    borderRadius: 6,
     justifyContent: "flex-end",
     overflow: "hidden",
     marginBottom: 6,
   },
-
   barFill: {
     width: "100%",
-    backgroundColor: "#667EEA",
-    borderRadius: 999,
+    borderRadius: 6,
   },
-
-  barLabel: {
-    color: "#6E7178",
-    fontSize: 11,
-  },
-
-  monthlyValue: {
-    color: "white",
-    fontSize: 20,
-    fontWeight: "700",
-  },
+  barLabel: { color: theme.color.textMuted, fontSize: 10, fontWeight: theme.font.weight.semibold },
 });
