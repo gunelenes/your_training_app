@@ -1,9 +1,9 @@
-import i18n from "@/src/locales";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { addWorkout } from "@/src/lib/storage";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Image,
   KeyboardAvoidingView,
@@ -20,20 +20,11 @@ import Animated, { FadeIn, SlideInDown } from "react-native-reanimated";
 
 export default function CreateWorkout() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [name, setName] = useState("");
   const [image, setImage] = useState<string | undefined>();
-  const [langUpdate, setLangUpdate] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    const handler = () => setLangUpdate((x) => x + 1);
-    i18n.on("languageChanged", handler);
-
-    return () => {
-      i18n.off("languageChanged", handler);
-    };
-  }, []);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -52,34 +43,23 @@ export default function CreateWorkout() {
 
     setIsLoading(true);
 
-    const newWorkout = {
+    await addWorkout({
       id: Date.now().toString(),
       name,
       image,
       exercises: [],
-    };
+    });
 
-    const raw = await AsyncStorage.getItem("WORKOUTS");
-    const list = raw ? JSON.parse(raw) : [];
-
-    list.push(newWorkout);
-
-    await AsyncStorage.setItem("WORKOUTS", JSON.stringify(list));
-
-    // Small delay for better UX
-    await new Promise(resolve => setTimeout(resolve, 500));
     setIsLoading(false);
-
-    router.push("/(tabs)");
+    router.replace("/(tabs)");
   };
 
   return (
     <View style={styles.container}>
-      {/* CUSTOM HEADER */}
       <Stack.Screen
         options={{
           headerShown: true,
-          headerTitle: i18n.t("new_workout"),
+          headerTitle: t("new_workout"),
           headerStyle: {
             backgroundColor: '#0A0B0D',
           },
@@ -90,7 +70,7 @@ export default function CreateWorkout() {
             color: '#fff',
           },
           headerShadowVisible: false,
-          headerBackTitle: i18n.t("back") || 'Geri',
+          headerBackTitle: t("back"),
           headerBackTitleStyle: {
             fontSize: 16,
           },
@@ -99,9 +79,9 @@ export default function CreateWorkout() {
           fullScreenGestureEnabled: true,
         }}
       />
-      
+
       <StatusBar barStyle="light-content" />
-      
+
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -111,24 +91,22 @@ export default function CreateWorkout() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* HEADER */}
           <Animated.View entering={FadeIn.duration(600)} style={styles.header}>
-            <Text style={styles.headerSubtext}>Create New</Text>
-            <Text style={styles.title}>{i18n.t("new_workout")}</Text>
+            <Text style={styles.headerSubtext}>{t("create_new_label")}</Text>
+            <Text style={styles.title}>{t("new_workout")}</Text>
             <Text style={styles.headerDescription}>
-              Build your custom workout plan
+              {t("build_your_workout")}
             </Text>
           </Animated.View>
 
-          {/* WORKOUT NAME */}
           <Animated.View entering={SlideInDown.delay(200)} style={styles.section}>
             <Text style={styles.label}>
               <Text style={styles.labelIcon}>💪 </Text>
-              {i18n.t("workout_name")}
+              {t("workout_name")}
             </Text>
             <View style={styles.inputContainer}>
               <TextInput
-                placeholder={i18n.t("workout_placeholder")}
+                placeholder={t("workout_placeholder")}
                 placeholderTextColor="#6E7178"
                 value={name}
                 onChangeText={setName}
@@ -137,11 +115,10 @@ export default function CreateWorkout() {
             </View>
           </Animated.View>
 
-          {/* IMAGE PICKER */}
           <Animated.View entering={SlideInDown.delay(400)} style={styles.section}>
             <Text style={styles.label}>
               <Text style={styles.labelIcon}>🖼️ </Text>
-              {i18n.t("select_photo")}
+              {t("select_photo")}
             </Text>
 
             {image ? (
@@ -160,7 +137,7 @@ export default function CreateWorkout() {
                     style={styles.changePhotoBtnGradient}
                   >
                     <Text style={styles.changePhotoBtnText}>
-                      📷 {i18n.t("change_photo") ?? "Change Photo"}
+                      📷 {t("change_photo")}
                     </Text>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -178,10 +155,10 @@ export default function CreateWorkout() {
                       <Text style={styles.photoBtnIcon}>📷</Text>
                     </View>
                     <Text style={styles.photoBtnText}>
-                      {i18n.t("select_photo")}
+                      {t("select_photo")}
                     </Text>
                     <Text style={styles.photoBtnSubtext}>
-                      Tap to choose from gallery
+                      {t("tap_to_choose_gallery")}
                     </Text>
                   </View>
                 </LinearGradient>
@@ -189,7 +166,6 @@ export default function CreateWorkout() {
             )}
           </Animated.View>
 
-          {/* CREATE BUTTON */}
           <Animated.View entering={SlideInDown.delay(600)} style={styles.buttonContainer}>
             <TouchableOpacity
               style={[styles.saveBtn, !name.trim() && styles.saveBtnDisabled]}
@@ -210,13 +186,13 @@ export default function CreateWorkout() {
                   styles.saveBtnText,
                   !name.trim() && styles.saveBtnTextDisabled
                 ]}>
-                  {isLoading ? "⏳ Creating..." : `✨ ${i18n.t("create")}`}
+                  {isLoading ? `⏳ ${t("creating")}` : `✨ ${t("create")}`}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
 
             <Text style={styles.helperText}>
-              You can add exercises after creating the workout
+              {t("add_exercises_after")}
             </Text>
           </Animated.View>
         </ScrollView>
@@ -378,7 +354,6 @@ const styles = StyleSheet.create({
     padding: 14,
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.2)",
-    backdropFilter: "blur(10px)",
   },
 
   changePhotoBtnText: {

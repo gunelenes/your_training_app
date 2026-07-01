@@ -1,8 +1,8 @@
-import i18n from "@/src/locales";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { deleteWorkout, getWorkouts, type Workout } from "@/src/lib/storage";
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Alert,
   Animated,
@@ -17,16 +17,8 @@ import {
 } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 
-type Workout = {
-  id: string;
-  name: string;
-  image?: string;
-  exercises?: any[];
-};
-
 const CARD_HEIGHT = 120;
 
-// 🎨 SKELETON CARD COMPONENT
 const SkeletonCard = ({ delay = 0 }: { delay?: number }) => {
   const pulseAnim = useRef(new Animated.Value(0)).current;
 
@@ -46,7 +38,7 @@ const SkeletonCard = ({ delay = 0 }: { delay?: number }) => {
         }),
       ])
     ).start();
-  }, []);
+  }, [delay, pulseAnim]);
 
   const opacity = pulseAnim.interpolate({
     inputRange: [0, 1],
@@ -66,22 +58,20 @@ const SkeletonCard = ({ delay = 0 }: { delay?: number }) => {
   );
 };
 
-// 🎯 ANIMATED CARD COMPONENT
-const AnimatedWorkoutCard = ({ 
-  item, 
-  index, 
-  onDelete, 
-  onPress 
-}: { 
-  item: Workout; 
-  index: number; 
-  onDelete: (id: string, swipeableRef?: any) => void;
+const AnimatedWorkoutCard = ({
+  item,
+  index,
+  onDelete,
+  onPress,
+}: {
+  item: Workout;
+  index: number;
+  onDelete: (id: string, swipeableRef?: React.RefObject<Swipeable | null>) => void;
   onPress: (id: string) => void;
 }) => {
+  const { t } = useTranslation();
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(50)).current;
-  const deleteAnim = useRef(new Animated.Value(0)).current;
-  const [isDeleting, setIsDeleting] = useState(false);
   const swipeableRef = useRef<Swipeable>(null);
 
   useEffect(() => {
@@ -100,7 +90,7 @@ const AnimatedWorkoutCard = ({
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [index, scaleAnim, translateY]);
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
@@ -118,26 +108,7 @@ const AnimatedWorkoutCard = ({
     }).start();
   };
 
-  const handleDelete = () => {
-    swipeableRef.current?.close();
-    setIsDeleting(true);
-    Animated.sequence([
-      Animated.timing(deleteAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      onDelete(item.id);
-    });
-  };
-
-  const renderRightActions = (progress: any, dragX: any) => {
+  const renderRightActions = (_progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
     const scale = dragX.interpolate({
       inputRange: [-100, 0],
       outputRange: [1, 0.5],
@@ -151,7 +122,7 @@ const AnimatedWorkoutCard = ({
     });
 
     return (
-      <Animated.View 
+      <Animated.View
         style={[
           { height: CARD_HEIGHT, justifyContent: "center" },
           { opacity, transform: [{ scale }] }
@@ -171,7 +142,7 @@ const AnimatedWorkoutCard = ({
             <View style={styles.deleteIconContainer}>
               <Text style={styles.deleteIcon}>✕</Text>
             </View>
-            <Text style={styles.deleteSwipeText}>Delete</Text>
+            <Text style={styles.deleteSwipeText}>{t("delete")}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </Animated.View>
@@ -179,7 +150,7 @@ const AnimatedWorkoutCard = ({
   };
 
   return (
-    <Animated.View 
+    <Animated.View
       style={[
         styles.swipeWrapper,
         {
@@ -210,7 +181,7 @@ const AnimatedWorkoutCard = ({
               style={styles.cardBackground}
               blurRadius={1}
             />
-            
+
             <LinearGradient
               colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.8)']}
               style={styles.gradientOverlay}
@@ -226,7 +197,7 @@ const AnimatedWorkoutCard = ({
                 <View style={styles.exerciseTag}>
                   <View style={styles.exerciseDot} />
                   <Text style={styles.cardSubtitle}>
-                    {item.exercises?.length || 0} {i18n.t("exercises")}
+                    {item.exercises?.length || 0} {t("exercises")}
                   </Text>
                 </View>
               </View>
@@ -244,30 +215,18 @@ const AnimatedWorkoutCard = ({
 
 export default function Home() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
-  const [langUpdate, setLangUpdate] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    const handler = () => setLangUpdate((n) => n + 1);
-    i18n.on("languageChanged", handler);
-    return () => i18n.off("languageChanged", handler);
-  }, []);
-
   const loadWorkouts = async (showLoading = true) => {
     if (showLoading) setLoading(true);
-    
-    // Simulate network delay for better UX
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const raw = await AsyncStorage.getItem("WORKOUTS");
-    const data = raw ? JSON.parse(raw) : [];
+    const data = await getWorkouts();
     setWorkouts(data);
     setLoading(false);
   };
 
-  // 🔄 PULL TO REFRESH
   const onRefresh = async () => {
     setRefreshing(true);
     await loadWorkouts(false);
@@ -280,36 +239,31 @@ export default function Home() {
     }, [])
   );
 
-  const deleteWorkout = async (id: string, swipeableRef?: any) => {
+  const handleDeleteWorkout = async (
+    id: string,
+    swipeableRef?: React.RefObject<Swipeable | null>
+  ) => {
     Alert.alert(
-      i18n.t("delete_workout"), 
-      i18n.t("delete_confirm"), 
+      t("delete_workout"),
+      t("delete_confirm"),
       [
-        { 
-          text: i18n.t("cancel"), 
+        {
+          text: t("cancel"),
           style: "cancel",
-          onPress: () => {
-            // Cancel'a basıldığında swipeable'ı kapat
-            if (swipeableRef?.current) {
-              swipeableRef.current.close();
-            }
-          }
+          onPress: () => swipeableRef?.current?.close(),
         },
         {
-          text: i18n.t("delete"),
+          text: t("delete"),
           style: "destructive",
           onPress: async () => {
-            const raw = await AsyncStorage.getItem("WORKOUTS");
-            const list = raw ? JSON.parse(raw) : [];
-            const updated = list.filter((w: any) => w.id !== id);
-            await AsyncStorage.setItem("WORKOUTS", JSON.stringify(updated));
-            setWorkouts(updated);
+            await deleteWorkout(id);
+            setWorkouts((prev) => prev.filter((w) => w.id !== id));
           },
         },
       ],
-      { 
+      {
         cancelable: true,
-        userInterfaceStyle: 'dark'
+        userInterfaceStyle: 'dark',
       }
     );
   };
@@ -318,7 +272,7 @@ export default function Home() {
     <AnimatedWorkoutCard
       item={item}
       index={index}
-      onDelete={deleteWorkout}
+      onDelete={handleDeleteWorkout}
       onPress={(id) => router.push(`/workouts/${id}`)}
     />
   );
@@ -326,11 +280,10 @@ export default function Home() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        {/* HEADER */}
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.headerSubtext}>My</Text>
-            <Text style={styles.headerText}>Workouts</Text>
+            <Text style={styles.headerSubtext}>{t("my_workouts")}</Text>
+            <Text style={styles.headerText}>{t("workouts")}</Text>
           </View>
 
           <TouchableOpacity
@@ -348,7 +301,6 @@ export default function Home() {
           </TouchableOpacity>
         </View>
 
-        {/* SKELETON LOADING */}
         {loading ? (
           <View style={{ paddingTop: 8 }}>
             {[0, 1, 2, 3].map((i) => (
@@ -373,9 +325,9 @@ export default function Home() {
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyIcon}>💪</Text>
-                <Text style={styles.emptyTitle}>{i18n.t("no_workouts")}</Text>
+                <Text style={styles.emptyTitle}>{t("no_workouts")}</Text>
                 <Text style={styles.emptySubtitle}>
-                  Tap + to create your first workout
+                  {t("tap_plus_first_workout")}
                 </Text>
               </View>
             }
@@ -573,7 +525,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 12,
     alignSelf: "flex-start",
-    backdropFilter: "blur(10px)",
   },
 
   exerciseDot: {
@@ -605,7 +556,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // 💀 SKELETON STYLES
   skeletonCard: {
     height: CARD_HEIGHT,
     backgroundColor: "#1A1C1E",

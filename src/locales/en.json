@@ -44,7 +44,6 @@
   "edit_workout": "Edit Workout",
   "workout_name_required": "Please enter a workout name.",
 
-  /* PROFILE PAGE */
   "manage_preferences": "Manage your preferences",
   "current_language": "Current Language",
   "active": "Active",
@@ -78,8 +77,38 @@
     "fri": "Fri",
     "sat": "Sat",
     "sun": "Sun"
-}
+  },
 
-
-
+  "delete": "Delete",
+  "cancel": "Cancel",
+  "delete_workout": "Delete Workout",
+  "delete_confirm": "Are you sure you want to delete?",
+  "delete_set_title": "Delete Set",
+  "delete_set_confirm": "Are you sure you want to delete this set?",
+  "empty": "Empty",
+  "no_exercises": "No exercises yet",
+  "no_sets": "No sets yet",
+  "no_sets_title": "No Sets",
+  "tap_add_set": "Tap + Add Set to begin",
+  "add_set": "Add Set",
+  "change_photo": "Change Photo",
+  "exercise_name": "Exercise Name",
+  "exercise_name_required_title": "Missing Name",
+  "workout_plan": "Workout Plan",
+  "create_new_label": "Create New",
+  "build_your_workout": "Build your custom workout plan",
+  "add_exercises_after": "You can add exercises after creating the workout",
+  "creating": "Creating...",
+  "saving": "Saving...",
+  "your_sets": "Your Sets",
+  "weight": "Weight",
+  "save_progress": "Save Progress",
+  "sets_saved": "Your sets have been saved successfully.",
+  "exercise_not_found": "Exercise not found",
+  "tap_to_choose_gallery": "Tap to choose from gallery",
+  "error": "Error",
+  "edit_workout_desc": "Update your workout details",
+  "tap_plus_first_workout": "Tap + to create your first workout",
+  "tap_plus_first_exercise": "Tap + to add your first exercise",
+  "coming_soon": "Coming Soon"
 }

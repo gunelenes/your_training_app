@@ -3,14 +3,12 @@ import { BlurView } from 'expo-blur';
 import { Tabs } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Platform, StyleSheet, View } from "react-native";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 export default function RootLayout() {
   const { t } = useTranslation();
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <Tabs
+    <Tabs
         screenOptions={{
           headerShown: false,
           tabBarActiveTintColor: "#667EEA",
@@ -119,7 +117,6 @@ export default function RootLayout() {
         />
 
       </Tabs>
-    </GestureHandlerRootView>
   );
 }
 

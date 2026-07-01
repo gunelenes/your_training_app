@@ -1,9 +1,9 @@
-import i18n from "@/src/locales";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { addExercise, type ExerciseSet } from "@/src/lib/storage";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Alert,
   Image,
@@ -18,33 +18,28 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import {
-  GestureHandlerRootView,
-  Swipeable,
-} from "react-native-gesture-handler";
+import { Swipeable } from "react-native-gesture-handler";
 import Animated, {
   FadeIn,
   FadeInUp,
   SlideInLeft,
 } from "react-native-reanimated";
 
-/* ===============================
-   🔥 ANIMATED SET CARD COMPONENT
-================================= */
 const AnimatedSetCard = ({
   item,
   index,
   onUpdate,
   onDelete,
 }: {
-  item: any;
+  item: ExerciseSet;
   index: number;
-  onUpdate: (field: string, value: string) => void;
+  onUpdate: (field: "weight" | "reps", value: string) => void;
   onDelete: () => void;
 }) => {
+  const { t } = useTranslation();
   const swipeableRef = useRef<Swipeable>(null);
 
-  const renderRightActions = (progress: any, dragX: any) => {
+  const renderRightActions = (_progress: RNAnimated.AnimatedInterpolation<number>, dragX: RNAnimated.AnimatedInterpolation<number>) => {
     const scale = dragX.interpolate({
       inputRange: [-100, 0],
       outputRange: [1, 0.5],
@@ -67,17 +62,16 @@ const AnimatedSetCard = ({
         <TouchableOpacity
           onPress={() => {
             Alert.alert(
-              i18n.t("delete_set_title") || "Delete Set",
-              i18n.t("delete_set_confirm") ||
-                "Are you sure you want to delete this set?",
+              t("delete_set_title"),
+              t("delete_set_confirm"),
               [
                 {
-                  text: i18n.t("cancel") || "Cancel",
+                  text: t("cancel"),
                   style: "cancel",
                   onPress: () => swipeableRef.current?.close(),
                 },
                 {
-                  text: i18n.t("delete") || "Delete",
+                  text: t("delete"),
                   style: "destructive",
                   onPress: onDelete,
                 },
@@ -100,7 +94,7 @@ const AnimatedSetCard = ({
             <View style={styles.deleteIconContainer}>
               <Text style={styles.deleteIcon}>✕</Text>
             </View>
-            <Text style={styles.deleteText}>{i18n.t("delete")}</Text>
+            <Text style={styles.deleteText}>{t("delete")}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </RNAnimated.View>
@@ -128,7 +122,7 @@ const AnimatedSetCard = ({
 
           <View style={styles.inputGroup}>
             <View style={styles.inputWrapper}>
-              <Text style={styles.inputLabel}>{i18n.t("kg")}</Text>
+              <Text style={styles.inputLabel}>{t("kg")}</Text>
               <TextInput
                 style={styles.input}
                 placeholder="0"
@@ -143,7 +137,7 @@ const AnimatedSetCard = ({
             <View style={styles.inputDivider} />
 
             <View style={styles.inputWrapper}>
-              <Text style={styles.inputLabel}>{i18n.t("reps")}</Text>
+              <Text style={styles.inputLabel}>{t("reps")}</Text>
               <TextInput
                 style={styles.input}
                 placeholder="0"
@@ -166,34 +160,16 @@ const AnimatedSetCard = ({
   );
 };
 
-/* ===============================
-   🔥 MAIN SCREEN
-================================= */
 export default function AddExercise() {
-  const { id } = useLocalSearchParams();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [exerciseName, setExerciseName] = useState("");
-  const [sets, setSets] = useState<any[]>([]);
+  const [sets, setSets] = useState<ExerciseSet[]>([]);
   const [exerciseImage, setExerciseImage] = useState<string | null>(null);
-  const [langUpdate, setLangUpdate] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
-  /* 🌀 Dil değişimini dinle */
-  useEffect(() => {
-    const handler = () => setLangUpdate((x) => x + 1);
-    i18n.on("languageChanged", handler);
-    return () => i18n.off("languageChanged", handler);
-  }, []);
-
-  /* ===============================
-     📌 HEADER (i18n Destekli)
-  ================================ */
-  const headerTitle = i18n.t("new_exercise");
-
-  /* ===============================
-     📷 Fotoğraf işlemleri
-  ================================ */
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       quality: 0.7,
@@ -209,7 +185,7 @@ export default function AddExercise() {
   const takePhoto = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert(i18n.t("camera_permission"));
+      Alert.alert(t("camera_permission"));
       return;
     }
 
@@ -225,8 +201,8 @@ export default function AddExercise() {
   };
 
   const addSet = () => {
-    setSets([
-      ...sets,
+    setSets((prev) => [
+      ...prev,
       {
         id: Date.now().toString(),
         weight: "",
@@ -236,69 +212,55 @@ export default function AddExercise() {
     ]);
   };
 
-  const updateSet = (index: number, field: string, value: string) => {
-    const temp = [...sets];
-    temp[index][field] = value;
-    setSets(temp);
+  const updateSet = (index: number, field: "weight" | "reps", value: string) => {
+    setSets((prev) =>
+      prev.map((s, i) => (i === index ? { ...s, [field]: value } : s))
+    );
   };
 
   const deleteSet = (index: number) => {
-    const temp = [...sets];
-    temp.splice(index, 1);
-    setSets(temp);
+    setSets((prev) => prev.filter((_, i) => i !== index));
   };
 
   const saveExercise = async () => {
     if (!exerciseName) {
       Alert.alert(
-        i18n.t("exercise_name_required_title") || "Missing Name",
-        i18n.t("exercise_name_required")
+        t("exercise_name_required_title"),
+        t("exercise_name_required")
       );
       return;
     }
 
     if (sets.length === 0) {
       Alert.alert(
-        i18n.t("no_sets_title") || "No Sets",
-        i18n.t("at_least_one_set")
+        t("no_sets_title"),
+        t("at_least_one_set")
       );
       return;
     }
 
     setIsLoading(true);
 
-    const raw = await AsyncStorage.getItem("WORKOUTS");
-    const workouts = raw ? JSON.parse(raw) : [];
-
-    const wIndex = workouts.findIndex((w: any) => w.id === id);
-
-    const newExercise = {
+    await addExercise(id, {
       id: Date.now().toString(),
       name: exerciseName,
       image: exerciseImage,
       sets,
-    };
+    });
 
-    if (wIndex !== -1) {
-      workouts[wIndex].exercises.push(newExercise);
-      await AsyncStorage.setItem("WORKOUTS", JSON.stringify(workouts));
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 500));
     setIsLoading(false);
 
-    Alert.alert("✅", i18n.t("exercise_saved"), [
-      { text: "OK", onPress: () => router.back() },
+    Alert.alert("✅", t("exercise_saved"), [
+      { text: t("ok"), onPress: () => router.back() },
     ]);
   };
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      {/* 🔥 CUSTOM HEADER */}
+    <>
       <Stack.Screen
         options={{
           headerShown: true,
-          headerTitle: headerTitle,
+          headerTitle: t("new_exercise"),
           headerStyle: {
             backgroundColor: "#0A0B0D",
           },
@@ -309,7 +271,7 @@ export default function AddExercise() {
             color: "#fff",
           },
           headerShadowVisible: false,
-          headerBackTitle: i18n.t("back") || "Back",
+          headerBackTitle: t("back"),
           headerBackTitleStyle: {
             fontSize: 16,
           },
@@ -331,24 +293,22 @@ export default function AddExercise() {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
-            {/* HEADER */}
             <Animated.View
               entering={FadeInUp.duration(600)}
               style={styles.header}
             >
               <Text style={styles.headerSubtext}>
-                {i18n.t("new_exercise")}
+                {t("new_exercise")}
               </Text>
               <Text style={styles.title}>
-                {i18n.t("new_exercise")}
+                {t("new_exercise")}
               </Text>
             </Animated.View>
 
-            {/* PHOTO SECTION */}
             <Animated.View entering={FadeInUp.delay(200)} style={styles.section}>
               <Text style={styles.label}>
                 <Text style={styles.labelIcon}>📸 </Text>
-                {i18n.t("select_photo")}
+                {t("select_photo")}
               </Text>
 
               {exerciseImage ? (
@@ -367,7 +327,7 @@ export default function AddExercise() {
                       onPress={pickImage}
                     >
                       <Text style={styles.overlayBtnText}>
-                        🖼️ {i18n.t("select_from_gallery")}
+                        🖼️ {t("select_from_gallery")}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -375,7 +335,7 @@ export default function AddExercise() {
                       onPress={takePhoto}
                     >
                       <Text style={styles.overlayBtnText}>
-                        📸 {i18n.t("take_photo")}
+                        📸 {t("take_photo")}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -385,7 +345,7 @@ export default function AddExercise() {
                   <View style={styles.photoEmptyState}>
                     <Text style={styles.photoEmptyIcon}>📷</Text>
                     <Text style={styles.photoEmptyText}>
-                      {i18n.t("no_photo_selected")}
+                      {t("no_photo_selected")}
                     </Text>
                   </View>
 
@@ -400,7 +360,7 @@ export default function AddExercise() {
                       >
                         <Text style={styles.photoBtnIcon}>🖼️</Text>
                         <Text style={styles.photoBtnText}>
-                          {i18n.t("select_from_gallery")}
+                          {t("select_from_gallery")}
                         </Text>
                       </LinearGradient>
                     </TouchableOpacity>
@@ -415,7 +375,7 @@ export default function AddExercise() {
                       >
                         <Text style={styles.photoBtnIcon}>📸</Text>
                         <Text style={styles.photoBtnText}>
-                          {i18n.t("take_photo")}
+                          {t("take_photo")}
                         </Text>
                       </LinearGradient>
                     </TouchableOpacity>
@@ -424,19 +384,18 @@ export default function AddExercise() {
               )}
             </Animated.View>
 
-            {/* EXERCISE NAME */}
             <Animated.View
               entering={FadeInUp.delay(400)}
               style={styles.section}
             >
               <Text style={styles.label}>
                 <Text style={styles.labelIcon}>💪 </Text>
-                {i18n.t("exercise_name")}
+                {t("exercise_name")}
               </Text>
               <View style={styles.inputContainer}>
                 <TextInput
                   style={styles.nameInput}
-                  placeholder={i18n.t("exercise_name_placeholder")}
+                  placeholder={t("exercise_name_placeholder")}
                   placeholderTextColor="#6E7178"
                   value={exerciseName}
                   onChangeText={setExerciseName}
@@ -444,7 +403,6 @@ export default function AddExercise() {
               </View>
             </Animated.View>
 
-            {/* SETS SECTION */}
             <Animated.View
               entering={FadeInUp.delay(600)}
               style={styles.section}
@@ -452,11 +410,11 @@ export default function AddExercise() {
               <View style={styles.setsHeader}>
                 <Text style={styles.label}>
                   <Text style={styles.labelIcon}>🏋️ </Text>
-                  {i18n.t("sets")}
+                  {t("sets")}
                 </Text>
                 <TouchableOpacity style={styles.addSetBtn} onPress={addSet}>
                   <Text style={styles.addSetBtnText}>
-                    + {i18n.t("add_set") || "Add Set"}
+                    + {t("add_set")}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -465,10 +423,10 @@ export default function AddExercise() {
                 <Animated.View entering={FadeIn} style={styles.emptyContainer}>
                   <Text style={styles.emptyIcon}>🏋️</Text>
                   <Text style={styles.emptyTitle}>
-                    {i18n.t("no_sets") || "No sets yet"}
+                    {t("no_sets")}
                   </Text>
                   <Text style={styles.emptySubtitle}>
-                    {i18n.t("tap_add_set") || "Tap + Add Set to begin"}
+                    {t("tap_add_set")}
                   </Text>
                 </Animated.View>
               ) : (
@@ -486,7 +444,6 @@ export default function AddExercise() {
               )}
             </Animated.View>
 
-            {/* SAVE BUTTON */}
             {sets.length > 0 && (
               <Animated.View
                 entering={FadeIn.delay(800)}
@@ -516,8 +473,8 @@ export default function AddExercise() {
                       ]}
                     >
                       {isLoading
-                        ? "⏳ " + i18n.t("saving")
-                        : "💾 " + i18n.t("save")}
+                        ? "⏳ " + t("saving")
+                        : "💾 " + t("save")}
                     </Text>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -526,13 +483,10 @@ export default function AddExercise() {
           </ScrollView>
         </KeyboardAvoidingView>
       </View>
-    </GestureHandlerRootView>
+    </>
   );
 }
 
-/* ===========================================
-   🎨 STYLES
-=========================================== */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -561,7 +515,6 @@ const styles = StyleSheet.create({
   },
   section: { marginBottom: 32 },
 
-  /* LABELS */
   label: {
     fontSize: 18,
     fontWeight: "700",
@@ -570,7 +523,6 @@ const styles = StyleSheet.create({
   },
   labelIcon: { fontSize: 20 },
 
-  /* PHOTO */
   photoCard: {
     backgroundColor: "#1A1C1E",
     borderRadius: 20,
@@ -645,7 +597,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  /* NAME INPUT */
   inputContainer: {
     backgroundColor: "#1A1C1E",
     borderRadius: 16,
@@ -658,7 +609,6 @@ const styles = StyleSheet.create({
     color: "white",
   },
 
-  /* SET CARD */
   setsHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -754,7 +704,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  /* EMPTY STATE */
   emptyContainer: {
     alignItems: "center",
     paddingVertical: 40,
@@ -773,7 +722,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  /* SAVE BUTTON */
   saveButtonContainer: { marginTop: 20 },
   saveBtn: {
     borderRadius: 16,
@@ -795,7 +743,6 @@ const styles = StyleSheet.create({
     color: "#6E7178",
   },
 
-  /* SWIPE DELETE */
   deleteSwipeContainer: {
     justifyContent: "center",
     height: 88,

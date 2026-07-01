@@ -1,10 +1,10 @@
-import i18n from "@/src/locales";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
     Animated,
+    AppState,
     ScrollView,
     StyleSheet,
     Text,
@@ -19,6 +19,10 @@ type HistoryItem = {
   amount: number;
 };
 
+const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+const getDateKey = (d: Date) =>
+  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
 export default function Water() {
   const { t } = useTranslation();
 
@@ -26,33 +30,61 @@ export default function Water() {
   const [inputValue, setInputValue] = useState("");
   const [dailyGoal, setDailyGoal] = useState(2500);
   const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [langUpdate, setLangUpdate] = useState(0);
-
-  const today = new Date();
-  const todayStr = `${today.getDate()}-${today.getMonth() + 1}-${today.getFullYear()}`;
 
   const progressAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(0)).current;
 
-  /* ---------------------------------------------
-     LANGUAGE CHANGE RE-RENDER
-  --------------------------------------------- */
-  useEffect(() => {
-    const handler = () => setLangUpdate((v) => v + 1);
-    i18n.on("languageChanged", handler);
-    return () => i18n.off("languageChanged", handler);
+  const saveHistory = useCallback(async (date: string, amount: number) => {
+    const raw = await AsyncStorage.getItem("WATER_HISTORY");
+    const list: HistoryItem[] = raw ? JSON.parse(raw) : [];
+
+    const existing = list.find((h) => h.date === date);
+    if (existing) {
+      existing.amount = amount;
+    } else {
+      list.push({ date, amount });
+    }
+    await AsyncStorage.setItem("WATER_HISTORY", JSON.stringify(list));
+    setHistory(list);
   }, []);
 
-  /* ---------------------------------------------
-     INITIAL LOAD
-  --------------------------------------------- */
+  const handleDailyReset = useCallback(async () => {
+    const todayKey = getDateKey(new Date());
+    const lastDate = await AsyncStorage.getItem("LAST_WATER_DATE");
+
+    if (lastDate !== todayKey) {
+      const prevRaw = await AsyncStorage.getItem("DAILY_WATER");
+      const prevAmount = prevRaw ? Number(prevRaw) : 0;
+
+      if (prevAmount > 0 && lastDate) {
+        await saveHistory(lastDate, prevAmount);
+      }
+
+      await AsyncStorage.setItem("DAILY_WATER", "0");
+      await AsyncStorage.setItem("LAST_WATER_DATE", todayKey);
+      setWater(0);
+    } else {
+      const raw = await AsyncStorage.getItem("DAILY_WATER");
+      setWater(raw ? Number(raw) : 0);
+    }
+  }, [saveHistory]);
+
+  const loadHistory = async () => {
+    const raw = await AsyncStorage.getItem("WATER_HISTORY");
+    setHistory(raw ? JSON.parse(raw) : []);
+  };
+
+  const loadGoal = async () => {
+    const raw = await AsyncStorage.getItem("WATER_GOAL");
+    setDailyGoal(raw ? Number(raw) : 2500);
+  };
+
   useEffect(() => {
-    const init = async () => {
+    (async () => {
       await handleDailyReset();
       await loadGoal();
       await loadHistory();
-    };
-    init();
+    })();
 
     Animated.loop(
       Animated.sequence([
@@ -68,108 +100,50 @@ export default function Water() {
         }),
       ])
     ).start();
-  }, []);
+  }, [handleDailyReset, pulseAnim]);
 
-  /* ---------------------------------------------
-     PROGRESS ANIMATION
-  --------------------------------------------- */
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        handleDailyReset();
+      }
+    });
+    return () => sub.remove();
+  }, [handleDailyReset]);
+
   useEffect(() => {
     Animated.timing(progressAnim, {
       toValue: Math.min(water / dailyGoal, 1),
       duration: 600,
       useNativeDriver: false,
     }).start();
-  }, [water, dailyGoal, langUpdate]);
+  }, [water, dailyGoal, progressAnim]);
 
-
-  /* ---------------------------------------------
-     HISTORY & GOAL LOADERS
-  --------------------------------------------- */
-  const loadHistory = async () => {
-    const raw = await AsyncStorage.getItem("WATER_HISTORY");
-    setHistory(raw ? JSON.parse(raw) : []);
-  };
-
-  const loadGoal = async () => {
-    const raw = await AsyncStorage.getItem("WATER_GOAL");
-    setDailyGoal(raw ? Number(raw) : 2500);
-  };
-
-
-  /* ---------------------------------------------
-     DAILY RESET LOGIC
-  --------------------------------------------- */
-  const handleDailyReset = async () => {
-    const lastDate = await AsyncStorage.getItem("LAST_WATER_DATE");
-
-    if (lastDate !== todayStr) {
-      const prevRaw = await AsyncStorage.getItem("DAILY_WATER");
-      const prevAmount = prevRaw ? Number(prevRaw) : 0;
-
-      if (prevAmount > 0 && lastDate) {
-        await saveHistory(lastDate, prevAmount);
-      }
-
-      await AsyncStorage.setItem("DAILY_WATER", "0");
-      await AsyncStorage.setItem("LAST_WATER_DATE", todayStr);
-      setWater(0);
-    } else {
-      const raw = await AsyncStorage.getItem("DAILY_WATER");
-      setWater(raw ? Number(raw) : 0);
-    }
-  };
-
-  const saveHistory = async (date: string, amount: number) => {
-    const raw = await AsyncStorage.getItem("WATER_HISTORY");
-    const list = raw ? JSON.parse(raw) : [];
-
-    if (!list.find((h: HistoryItem) => h.date === date)) {
-      list.push({ date, amount });
-      await AsyncStorage.setItem("WATER_HISTORY", JSON.stringify(list));
-      setHistory(list);
-    }
-  };
-
-
-  /* ---------------------------------------------
-     ADD & REMOVE WATER (same function)
-  --------------------------------------------- */
   const addWater = async (amount: number) => {
+    const todayKey = getDateKey(new Date());
     let newAmount = water + amount;
-
-    // ❗ Never go below zero
     if (newAmount < 0) newAmount = 0;
 
     setWater(newAmount);
 
     await AsyncStorage.setItem("DAILY_WATER", newAmount.toString());
-    await AsyncStorage.setItem("LAST_WATER_DATE", todayStr);
+    await AsyncStorage.setItem("LAST_WATER_DATE", todayKey);
   };
 
   const addManual = () => {
     if (!inputValue) return;
-
     const val = Number(inputValue);
     if (isNaN(val)) return;
-
     addWater(val);
     setInputValue("");
   };
 
-
-  /* ---------------------------------------------
-     CHANGE GOAL
-  --------------------------------------------- */
   const updateGoal = async (delta: number) => {
     const g = Math.max(500, dailyGoal + delta);
     setDailyGoal(g);
     await AsyncStorage.setItem("WATER_GOAL", g.toString());
   };
 
-
-  /* ---------------------------------------------
-     WEEKLY GRAPH
-  --------------------------------------------- */
   const getDayKey = (date: Date): string => {
     const d = date.getDay();
     if (d === 1) return "mon";
@@ -181,11 +155,14 @@ export default function Water() {
     return "sun";
   };
 
+  const today = new Date();
+  const todayKey = getDateKey(today);
+
   const getWeeklyData = () => {
     const combined = [...history];
-    const todayEntry = combined.find((x) => x.date === todayStr);
+    const todayEntry = combined.find((x) => x.date === todayKey);
 
-    if (!todayEntry) combined.push({ date: todayStr, amount: water });
+    if (!todayEntry) combined.push({ date: todayKey, amount: water });
     else todayEntry.amount = water;
 
     const arr = [];
@@ -194,7 +171,7 @@ export default function Water() {
       const d = new Date();
       d.setDate(today.getDate() - i);
 
-      const dateKey = `${d.getDate()}-${d.getMonth() + 1}-${d.getFullYear()}`;
+      const dateKey = getDateKey(d);
       const record = combined.find((x) => x.date === dateKey);
 
       const key = getDayKey(d);
@@ -213,13 +190,13 @@ export default function Water() {
 
   const monthlyTotal = (() => {
     const combined = [...history];
-    const tE = combined.find((x) => x.date === todayStr);
+    const tE = combined.find((x) => x.date === todayKey);
 
-    if (!tE) combined.push({ date: todayStr, amount: water });
+    if (!tE) combined.push({ date: todayKey, amount: water });
     else tE.amount = water;
 
     return combined.reduce((sum, x) => {
-      const [, m, y] = x.date.split("-");
+      const [y, m] = x.date.split("-");
       if (
         Number(m) === today.getMonth() + 1 &&
         Number(y) === today.getFullYear()
@@ -247,21 +224,15 @@ export default function Water() {
 
   const percent = Math.min((water / dailyGoal) * 100, 100);
 
-
-  /* ---------------------------------------------
-     RENDER
-  --------------------------------------------- */
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 32 }}>
-        
-        {/* HEADER */}
+
         <Text style={styles.headerTitle}>{t("water_intake")}</Text>
         <Text style={styles.headerSubtitle}>
           {t("daily_goal")}: {dailyGoal} ml
         </Text>
 
-        {/* ANIMATED CIRCLE */}
         <View style={styles.progressWrapper}>
           <Animated.View
             style={[
@@ -275,14 +246,12 @@ export default function Water() {
           </View>
         </View>
 
-        {/* HORIZONTAL PROGRESS */}
         <View style={styles.progressBarTrack}>
           <Animated.View style={[styles.progressBarFill, { width: progressWidth }]}>
             <LinearGradient colors={["#667EEA", "#764BA2"]} style={{ flex: 1 }} />
           </Animated.View>
         </View>
 
-        {/* QUICK ADD */}
         <View style={styles.quickRow}>
           {[250, 500, 750].map((ml) => (
             <TouchableOpacity key={ml} onPress={() => addWater(ml)}>
@@ -294,7 +263,6 @@ export default function Water() {
         </View>
 
 
-        {/* MANUAL INPUT */}
         <View style={styles.inputRow}>
           <TextInput
             style={styles.input}
@@ -312,7 +280,6 @@ export default function Water() {
           </TouchableOpacity>
         </View>
 
-        {/* GOAL */}
         <View style={styles.goalCard}>
           <Text style={styles.sectionTitle}>{t("daily_goal")}</Text>
           <Text style={styles.goalValue}>{dailyGoal} ml</Text>
@@ -328,7 +295,6 @@ export default function Water() {
           </View>
         </View>
 
-        {/* WEEKLY GRAPH */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>{t("weekly_overview")}</Text>
 
@@ -347,7 +313,6 @@ export default function Water() {
           </View>
         </View>
 
-        {/* MONTHLY TOTAL */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>{t("monthly_total")}</Text>
           <Text style={styles.monthlyValue}>{monthlyTotal} ml</Text>

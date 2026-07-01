@@ -1,8 +1,8 @@
-import i18n from "@/src/locales";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { deleteExercise, getWorkout, type Exercise, type Workout } from "@/src/lib/storage";
 import { LinearGradient } from 'expo-linear-gradient';
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Alert,
   Animated,
@@ -14,9 +14,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { GestureHandlerRootView, Swipeable } from "react-native-gesture-handler";
+import { Swipeable } from "react-native-gesture-handler";
 
-// 💀 SKELETON EXERCISE CARD
 const SkeletonExerciseCard = ({ delay = 0 }: { delay?: number }) => {
   const pulseAnim = useRef(new Animated.Value(0)).current;
 
@@ -36,7 +35,7 @@ const SkeletonExerciseCard = ({ delay = 0 }: { delay?: number }) => {
         }),
       ])
     ).start();
-  }, []);
+  }, [delay, pulseAnim]);
 
   const opacity = pulseAnim.interpolate({
     inputRange: [0, 1],
@@ -51,18 +50,18 @@ const SkeletonExerciseCard = ({ delay = 0 }: { delay?: number }) => {
   );
 };
 
-// 🎯 ANIMATED EXERCISE CARD
 const AnimatedExerciseCard = ({
   item,
   index,
   onPress,
   onDelete,
 }: {
-  item: any;
+  item: Exercise;
   index: number;
   onPress: () => void;
-  onDelete: () => void;
+  onDelete: (swipeableRef: React.RefObject<Swipeable | null>) => void;
 }) => {
+  const { t } = useTranslation();
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const translateX = useRef(new Animated.Value(-50)).current;
   const swipeableRef = useRef<Swipeable>(null);
@@ -83,7 +82,7 @@ const AnimatedExerciseCard = ({
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [index, scaleAnim, translateX]);
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
@@ -101,7 +100,7 @@ const AnimatedExerciseCard = ({
     }).start();
   };
 
-  const renderRightActions = (progress: any, dragX: any) => {
+  const renderRightActions = (_progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
     const scale = dragX.interpolate({
       inputRange: [-100, 0],
       outputRange: [1, 0.5],
@@ -115,14 +114,14 @@ const AnimatedExerciseCard = ({
     });
 
     return (
-      <Animated.View 
+      <Animated.View
         style={[
           { height: 80, justifyContent: "center" },
           { opacity, transform: [{ scale }] }
         ]}
       >
         <TouchableOpacity
-          onPress={onDelete}
+          onPress={() => onDelete(swipeableRef)}
           style={styles.deleteSwipe}
           activeOpacity={0.7}
         >
@@ -173,7 +172,7 @@ const AnimatedExerciseCard = ({
               <View style={styles.setsTag}>
                 <View style={styles.setsDot} />
                 <Text style={styles.exerciseSets}>
-                  {item.sets?.length || 0} {i18n.t("sets")}
+                  {item.sets?.length || 0} {t("sets")}
                 </Text>
               </View>
             </View>
@@ -189,103 +188,78 @@ const AnimatedExerciseCard = ({
 };
 
 export default function WorkoutDetail() {
-  const { id } = useLocalSearchParams();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { t } = useTranslation();
 
-  const [workout, setWorkout] = useState<any>(null);
-  const [langUpdate, setLangUpdate] = useState(0);
+  const [workout, setWorkout] = useState<Workout | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const handler = () => setLangUpdate((x) => x + 1);
-    i18n.on("languageChanged", handler);
-    return () => i18n.off("languageChanged", handler);
-  }, []);
-
-  const loadWorkout = async () => {
+  const loadWorkout = useCallback(async () => {
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    const raw = await AsyncStorage.getItem("WORKOUTS");
-    const list = raw ? JSON.parse(raw) : [];
-    const found = list.find((x: any) => x.id === id);
-    setWorkout(found || null);
+    const found = await getWorkout(id);
+    setWorkout(found);
     setLoading(false);
-  };
-
-  useEffect(() => {
-    loadWorkout();
   }, [id]);
 
-  const deleteExercise = async (exerciseId: string, swipeableRef?: any) => {
+  useFocusEffect(
+    useCallback(() => {
+      loadWorkout();
+    }, [loadWorkout])
+  );
+
+  const handleDeleteExercise = async (
+    exerciseId: string,
+    swipeableRef: React.RefObject<Swipeable | null>
+  ) => {
     Alert.alert(
-      i18n.t("delete"),
-      i18n.t("delete_confirm"),
+      t("delete"),
+      t("delete_confirm"),
       [
-        { 
-          text: i18n.t("cancel"), 
+        {
+          text: t("cancel"),
           style: "cancel",
-          onPress: () => {
-            if (swipeableRef?.current) {
-              swipeableRef.current.close();
-            }
-          }
+          onPress: () => swipeableRef.current?.close(),
         },
         {
-          text: i18n.t("delete"),
+          text: t("delete"),
           style: "destructive",
           onPress: async () => {
-            const raw = await AsyncStorage.getItem("WORKOUTS");
-            const list = raw ? JSON.parse(raw) : [];
-
-            const updated = list.map((w: any) => {
-              if (w.id === id) {
-                return {
-                  ...w,
-                  exercises: w.exercises.filter(
-                    (ex: any) => ex.id !== exerciseId
-                  ),
-                };
-              }
-              return w;
-            });
-
-            await AsyncStorage.setItem("WORKOUTS", JSON.stringify(updated));
+            await deleteExercise(id, exerciseId);
             loadWorkout();
           },
         },
       ],
       {
         cancelable: true,
-        userInterfaceStyle: 'dark'
+        userInterfaceStyle: 'dark',
       }
     );
   };
 
-  const renderExercise = ({ item, index }: { item: any; index: number }) => (
+  const renderExercise = ({ item, index }: { item: Exercise; index: number }) => (
     <AnimatedExerciseCard
       item={item}
       index={index}
       onPress={() => router.push(`/workouts/${id}/exercise/${item.id}`)}
-      onDelete={() => deleteExercise(item.id)}
+      onDelete={(swipeableRef) => handleDeleteExercise(item.id, swipeableRef)}
     />
   );
 
   if (!workout && !loading) {
     return (
       <View style={styles.container}>
-        <Text style={styles.emptyText}>{i18n.t("empty")}</Text>
+        <Text style={styles.emptyText}>{t("empty")}</Text>
       </View>
     );
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      {/* CUSTOM HEADER */}
+    <>
       <Stack.Screen
         options={{
           headerShown: true,
-          headerTitle: workout?.name || i18n.t("workouts"),
+          headerTitle: workout?.name || t("workouts"),
           headerStyle: {
             backgroundColor: '#0A0B0D',
           },
@@ -296,7 +270,7 @@ export default function WorkoutDetail() {
             color: '#fff',
           },
           headerShadowVisible: false,
-          headerBackTitle: i18n.t("back") || 'Geri',
+          headerBackTitle: t("back"),
           headerBackTitleStyle: {
             fontSize: 16,
           },
@@ -305,135 +279,132 @@ export default function WorkoutDetail() {
           fullScreenGestureEnabled: true,
         }}
       />
-      
+
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
-      
-      {/* HEADER WITH IMAGE */}
-      {workout?.image ? (
-        <ImageBackground source={{ uri: workout.image }} style={styles.headerImage} blurRadius={0.5}>
-          <LinearGradient
-            colors={['rgba(0,0,0,0.2)', 'rgba(0,0,0,0.8)']}
-            style={styles.headerOverlay}
-          />
 
-          <TouchableOpacity
-            style={styles.editBtn}
-            onPress={() => router.push(`/workouts/${id}/edit`)}
-          >
+        {workout?.image ? (
+          <ImageBackground source={{ uri: workout.image }} style={styles.headerImage} blurRadius={0.5}>
             <LinearGradient
-              colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.15)']}
-              style={styles.editBtnGradient}
-            >
-              <Text style={styles.editText}>✏️</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+              colors={['rgba(0,0,0,0.2)', 'rgba(0,0,0,0.8)']}
+              style={styles.headerOverlay}
+            />
 
-          <View style={styles.headerContent}>
-            <Text style={styles.headerSubtext}>Workout Plan</Text>
-            <Text style={styles.headerTitle}>{workout?.name || "..."}</Text>
-            <View style={styles.headerStats}>
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{workout?.exercises?.length || 0}</Text>
-                <Text style={styles.statLabel}>{i18n.t("exercises")}</Text>
+            <TouchableOpacity
+              style={styles.editBtn}
+              onPress={() => router.push(`/workouts/${id}/edit`)}
+            >
+              <LinearGradient
+                colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.15)']}
+                style={styles.editBtnGradient}
+              >
+                <Text style={styles.editText}>✏️</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <View style={styles.headerContent}>
+              <Text style={styles.headerSubtext}>{t("workout_plan")}</Text>
+              <Text style={styles.headerTitle}>{workout?.name || "..."}</Text>
+              <View style={styles.headerStats}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>{workout?.exercises?.length || 0}</Text>
+                  <Text style={styles.statLabel}>{t("exercises")}</Text>
+                </View>
               </View>
             </View>
-          </View>
-        </ImageBackground>
-      ) : (
-        <View style={[styles.headerImage, styles.noImage]}>
-          <LinearGradient
-            colors={['#667EEA', '#764BA2']}
-            style={styles.headerOverlay}
-          />
-          
-          <TouchableOpacity
-            style={styles.editBtn}
-            onPress={() => router.push(`/workouts/${id}/edit`)}
-          >
-            <LinearGradient
-              colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.15)']}
-              style={styles.editBtnGradient}
-            >
-              <Text style={styles.editText}>✏️</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          <View style={styles.headerContent}>
-            <Text style={styles.headerSubtext}>Workout Plan</Text>
-            <Text style={styles.headerTitle}>{workout?.name || "..."}</Text>
-            <View style={styles.headerStats}>
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{workout?.exercises?.length || 0}</Text>
-                <Text style={styles.statLabel}>{i18n.t("exercises")}</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-      )}
-
-      {/* EXERCISES SECTION */}
-      <View style={styles.contentContainer}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>{i18n.t("exercises")}</Text>
-          <View style={styles.exerciseCount}>
-            <Text style={styles.exerciseCountText}>
-              {workout?.exercises?.length || 0}
-            </Text>
-          </View>
-        </View>
-
-        {loading ? (
-          <View>
-            {[0, 1, 2, 3].map((i) => (
-              <SkeletonExerciseCard key={i} delay={i * 100} />
-            ))}
-          </View>
+          </ImageBackground>
         ) : (
-          <FlatList
-            data={workout?.exercises || []}
-            keyExtractor={(item) => item.id}
-            renderItem={renderExercise}
-            contentContainerStyle={{ paddingBottom: 120 }}
-            showsVerticalScrollIndicator={false}
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyIcon}>🏋️</Text>
-                <Text style={styles.emptyTitle}>
-                  {i18n.t("no_exercises") ?? "No exercises yet"}
-                </Text>
-                <Text style={styles.emptySubtitle}>
-                  Tap + to add your first exercise
-                </Text>
-              </View>
-            }
-          />
-        )}
-      </View>
+          <View style={[styles.headerImage, styles.noImage]}>
+            <LinearGradient
+              colors={['#667EEA', '#764BA2']}
+              style={styles.headerOverlay}
+            />
 
-      {/* FAB BUTTON */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => router.push(`/workouts/${id}/add-exercise`)}
-      >
-        <LinearGradient
-          colors={['#4ADE80', '#22C55E']}
-          style={styles.fabGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+            <TouchableOpacity
+              style={styles.editBtn}
+              onPress={() => router.push(`/workouts/${id}/edit`)}
+            >
+              <LinearGradient
+                colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.15)']}
+                style={styles.editBtnGradient}
+              >
+                <Text style={styles.editText}>✏️</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <View style={styles.headerContent}>
+              <Text style={styles.headerSubtext}>{t("workout_plan")}</Text>
+              <Text style={styles.headerTitle}>{workout?.name || "..."}</Text>
+              <View style={styles.headerStats}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>{workout?.exercises?.length || 0}</Text>
+                  <Text style={styles.statLabel}>{t("exercises")}</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+
+        <View style={styles.contentContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{t("exercises")}</Text>
+            <View style={styles.exerciseCount}>
+              <Text style={styles.exerciseCountText}>
+                {workout?.exercises?.length || 0}
+              </Text>
+            </View>
+          </View>
+
+          {loading ? (
+            <View>
+              {[0, 1, 2, 3].map((i) => (
+                <SkeletonExerciseCard key={i} delay={i * 100} />
+              ))}
+            </View>
+          ) : (
+            <FlatList
+              data={workout?.exercises || []}
+              keyExtractor={(item) => item.id}
+              renderItem={renderExercise}
+              contentContainerStyle={{ paddingBottom: 120 }}
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyIcon}>🏋️</Text>
+                  <Text style={styles.emptyTitle}>
+                    {t("no_exercises")}
+                  </Text>
+                  <Text style={styles.emptySubtitle}>
+                    {t("tap_plus_first_exercise")}
+                  </Text>
+                </View>
+              }
+            />
+          )}
+        </View>
+
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => router.push(`/workouts/${id}/add-exercise`)}
         >
-          <Text style={styles.fabText}>+</Text>
-        </LinearGradient>
-      </TouchableOpacity>
-    </View>
-    </GestureHandlerRootView>
+          <LinearGradient
+            colors={['#4ADE80', '#22C55E']}
+            style={styles.fabGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <Text style={styles.fabText}>+</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: "#0A0B0D" 
+  container: {
+    flex: 1,
+    backgroundColor: "#0A0B0D"
   },
 
   headerImage: {
@@ -517,7 +488,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.2)",
-    backdropFilter: "blur(10px)",
   },
 
   editText: {
@@ -739,7 +709,6 @@ const styles = StyleSheet.create({
     marginTop: -2,
   },
 
-  // 💀 SKELETON
   skeletonCard: {
     backgroundColor: "#1A1C1E",
     borderRadius: 16,

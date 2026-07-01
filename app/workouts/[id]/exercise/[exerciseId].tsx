@@ -1,8 +1,8 @@
-import i18n from "@/src/locales";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getWorkout, updateExerciseSets, type Exercise, type ExerciseSet } from "@/src/lib/storage";
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Alert,
   ImageBackground,
@@ -17,24 +17,24 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { GestureHandlerRootView, Swipeable } from "react-native-gesture-handler";
+import { Swipeable } from "react-native-gesture-handler";
 import Animated, { FadeIn, SlideInLeft } from "react-native-reanimated";
 
-// 🎯 ANIMATED SET CARD
 const AnimatedSetCard = ({
   item,
   index,
   onUpdate,
   onDelete,
 }: {
-  item: any;
+  item: ExerciseSet;
   index: number;
-  onUpdate: (field: string, value: string) => void;
+  onUpdate: (field: "weight" | "reps", value: string) => void;
   onDelete: () => void;
 }) => {
+  const { t } = useTranslation();
   const swipeableRef = useRef<Swipeable>(null);
 
-  const renderRightActions = (progress: any, dragX: any) => {
+  const renderRightActions = (_progress: RNAnimated.AnimatedInterpolation<number>, dragX: RNAnimated.AnimatedInterpolation<number>) => {
     const scale = dragX.interpolate({
       inputRange: [-100, 0],
       outputRange: [1, 0.5],
@@ -48,7 +48,7 @@ const AnimatedSetCard = ({
     });
 
     return (
-      <RNAnimated.View 
+      <RNAnimated.View
         style={[
           styles.deleteSwipeContainer,
           { opacity, transform: [{ scale }] }
@@ -57,21 +57,21 @@ const AnimatedSetCard = ({
         <TouchableOpacity
           onPress={() => {
             Alert.alert(
-              "Delete Set",
-              "Are you sure you want to delete this set?",
+              t("delete_set_title"),
+              t("delete_set_confirm"),
               [
-                { 
-                  text: "Cancel", 
+                {
+                  text: t("cancel"),
                   style: "cancel",
                   onPress: () => swipeableRef.current?.close()
                 },
                 {
-                  text: "Delete",
+                  text: t("delete"),
                   style: "destructive",
                   onPress: onDelete,
                 },
               ],
-              { 
+              {
                 cancelable: true,
                 userInterfaceStyle: 'dark'
               }
@@ -89,7 +89,7 @@ const AnimatedSetCard = ({
             <View style={styles.deleteIconContainer}>
               <Text style={styles.deleteIcon}>✕</Text>
             </View>
-            <Text style={styles.deleteText}>Delete</Text>
+            <Text style={styles.deleteText}>{t("delete")}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </RNAnimated.View>
@@ -117,7 +117,7 @@ const AnimatedSetCard = ({
 
           <View style={styles.inputGroup}>
             <View style={styles.inputWrapper}>
-              <Text style={styles.inputLabel}>Weight</Text>
+              <Text style={styles.inputLabel}>{t("weight")}</Text>
               <TextInput
                 style={styles.input}
                 placeholder="0"
@@ -132,7 +132,7 @@ const AnimatedSetCard = ({
             <View style={styles.inputDivider} />
 
             <View style={styles.inputWrapper}>
-              <Text style={styles.inputLabel}>Reps</Text>
+              <Text style={styles.inputLabel}>{t("reps")}</Text>
               <TextInput
                 style={styles.input}
                 placeholder="0"
@@ -156,78 +156,34 @@ const AnimatedSetCard = ({
 };
 
 export default function ExerciseDetail() {
-  const { id, exerciseId } = useLocalSearchParams();
+  const { id, exerciseId } = useLocalSearchParams<{ id: string; exerciseId: string }>();
   const router = useRouter();
-  const navigation = useNavigation();
+  const { t } = useTranslation();
 
-  const [workout, setWorkout] = useState<any>(null);
-  const [exercise, setExercise] = useState<any>(null);
-  const [sets, setSets] = useState<any[]>([]);
+  const [exercise, setExercise] = useState<Exercise | null>(null);
+  const [sets, setSets] = useState<ExerciseSet[]>([]);
   const [loading, setLoading] = useState(true);
-  const [langUpdate, setLangUpdate] = useState(0);
-
-  // Custom Header Setup
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerShown: true,
-      headerTitle: exercise?.name || i18n.t("exercises"),
-      headerStyle: {
-        backgroundColor: '#0A0B0D',
-      },
-      headerTintColor: '#667EEA',
-      headerTitleStyle: {
-        fontWeight: '700',
-        fontSize: 18,
-        color: '#fff',
-      },
-      headerShadowVisible: false,
-      headerBackTitle: i18n.t("back") || 'Geri',
-      headerBackTitleStyle: {
-        fontSize: 16,
-        fontWeight: '600',
-      },
-      gestureEnabled: true,
-      gestureDirection: 'horizontal',
-      fullScreenGestureEnabled: true,
-    });
-  }, [navigation, exercise, langUpdate]);
-
-  // Dil değişimi
-  useEffect(() => {
-    const handler = () => setLangUpdate((x) => x + 1);
-    i18n.on("languageChanged", handler);
-    return () => i18n.off("languageChanged", handler);
-  }, []);
-
-  const load = async () => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    const raw = await AsyncStorage.getItem("WORKOUTS");
-    const workouts = raw ? JSON.parse(raw) : [];
-
-    const w = workouts.find((x: any) => x.id === id);
-    const e = w?.exercises.find((x: any) => x.id === exerciseId);
-
-    setWorkout(w);
-    setExercise(e);
-    setSets(e?.sets || []);
-    setLoading(false);
-  };
 
   useEffect(() => {
-    load();
-  }, []);
+    (async () => {
+      setLoading(true);
+      const w = await getWorkout(id);
+      const e = w?.exercises.find((x) => x.id === exerciseId) ?? null;
+      setExercise(e);
+      setSets(e?.sets || []);
+      setLoading(false);
+    })();
+  }, [id, exerciseId]);
 
-  const updateSet = (index: number, field: string, value: string) => {
-    const temp = [...sets];
-    temp[index][field] = value;
-    setSets(temp);
+  const updateSet = (index: number, field: "weight" | "reps", value: string) => {
+    setSets((prev) =>
+      prev.map((s, i) => (i === index ? { ...s, [field]: value } : s))
+    );
   };
 
   const addSet = () => {
-    setSets([
-      ...sets,
+    setSets((prev) => [
+      ...prev,
       {
         id: Date.now().toString(),
         weight: "",
@@ -238,42 +194,53 @@ export default function ExerciseDetail() {
   };
 
   const deleteSet = (i: number) => {
-    const temp = [...sets];
-    temp.splice(i, 1);
-    setSets(temp);
+    setSets((prev) => prev.filter((_, idx) => idx !== i));
   };
 
   const save = async () => {
-    const raw = await AsyncStorage.getItem("WORKOUTS");
-    const workouts = raw ? JSON.parse(raw) : [];
-
-    const wIndex = workouts.findIndex((x: any) => x.id === id);
-    const eIndex = workouts[wIndex].exercises.findIndex(
-      (x: any) => x.id === exerciseId
-    );
-
-    workouts[wIndex].exercises[eIndex].sets = sets;
-
-    await AsyncStorage.setItem("WORKOUTS", JSON.stringify(workouts));
-    Alert.alert("✅ Saved!", "Your sets have been saved successfully.", [
-      { text: "OK", onPress: () => router.back() }
+    await updateExerciseSets(id, exerciseId, sets);
+    Alert.alert("✅", t("sets_saved"), [
+      { text: t("ok"), onPress: () => router.back() }
     ]);
   };
 
   if (!exercise && !loading) {
     return (
       <View style={styles.centerContainer}>
-        <Text style={styles.emptyText}>Exercise not found</Text>
+        <Text style={styles.emptyText}>{t("exercise_not_found")}</Text>
       </View>
     );
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          headerTitle: exercise?.name || t("exercises"),
+          headerStyle: {
+            backgroundColor: '#0A0B0D',
+          },
+          headerTintColor: '#667EEA',
+          headerTitleStyle: {
+            fontWeight: '700',
+            fontSize: 18,
+            color: '#fff',
+          },
+          headerShadowVisible: false,
+          headerBackTitle: t("back"),
+          headerBackTitleStyle: {
+            fontSize: 16,
+          },
+          gestureEnabled: true,
+          gestureDirection: 'horizontal',
+          fullScreenGestureEnabled: true,
+        }}
+      />
+
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
 
-        {/* HEADER */}
         {exercise?.image ? (
           <ImageBackground
             source={{ uri: exercise.image }}
@@ -285,12 +252,12 @@ export default function ExerciseDetail() {
               style={styles.headerOverlay}
             />
             <View style={styles.headerContent}>
-              <Text style={styles.headerSubtext}>Exercise</Text>
+              <Text style={styles.headerSubtext}>{t("new_exercise")}</Text>
               <Text style={styles.headerTitle}>{exercise?.name || "..."}</Text>
               <View style={styles.statsRow}>
                 <View style={styles.statBadge}>
                   <Text style={styles.statNumber}>{sets.length}</Text>
-                  <Text style={styles.statLabel}>Sets</Text>
+                  <Text style={styles.statLabel}>{t("sets")}</Text>
                 </View>
               </View>
             </View>
@@ -302,28 +269,27 @@ export default function ExerciseDetail() {
               style={styles.headerOverlay}
             />
             <View style={styles.headerContent}>
-              <Text style={styles.headerSubtext}>Exercise</Text>
+              <Text style={styles.headerSubtext}>{t("new_exercise")}</Text>
               <Text style={styles.headerTitle}>{exercise?.name || "..."}</Text>
               <View style={styles.statsRow}>
                 <View style={styles.statBadge}>
                   <Text style={styles.statNumber}>{sets.length}</Text>
-                  <Text style={styles.statLabel}>Sets</Text>
+                  <Text style={styles.statLabel}>{t("sets")}</Text>
                 </View>
               </View>
             </View>
           </View>
         )}
 
-        {/* CONTENT */}
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           <View style={styles.contentContainer}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Your Sets</Text>
+              <Text style={styles.sectionTitle}>{t("your_sets")}</Text>
               <TouchableOpacity style={styles.addSetBtn} onPress={addSet}>
-                <Text style={styles.addSetBtnText}>+ Add Set</Text>
+                <Text style={styles.addSetBtnText}>+ {t("add_set")}</Text>
               </TouchableOpacity>
             </View>
 
@@ -332,16 +298,12 @@ export default function ExerciseDetail() {
               contentContainerStyle={styles.scrollContent}
               showsVerticalScrollIndicator={false}
             >
-              {loading ? (
-                <View style={styles.loadingContainer}>
-                  <Text style={styles.loadingText}>Loading...</Text>
-                </View>
-              ) : sets.length === 0 ? (
+              {sets.length === 0 && !loading ? (
                 <Animated.View entering={FadeIn} style={styles.emptyContainer}>
                   <Text style={styles.emptyIcon}>🏋️</Text>
-                  <Text style={styles.emptyTitle}>No sets yet</Text>
+                  <Text style={styles.emptyTitle}>{t("no_sets")}</Text>
                   <Text style={styles.emptySubtitle}>
-                    Tap "+ Add Set" to start tracking
+                    {t("tap_add_set")}
                   </Text>
                 </Animated.View>
               ) : (
@@ -357,7 +319,6 @@ export default function ExerciseDetail() {
               )}
             </ScrollView>
 
-            {/* SAVE BUTTON */}
             {sets.length > 0 && (
               <Animated.View entering={FadeIn.delay(300)} style={styles.saveButtonContainer}>
                 <TouchableOpacity style={styles.saveBtn} onPress={save}>
@@ -367,7 +328,7 @@ export default function ExerciseDetail() {
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                   >
-                    <Text style={styles.saveBtnText}>💾 Save Progress</Text>
+                    <Text style={styles.saveBtnText}>💾 {t("save_progress")}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </Animated.View>
@@ -375,7 +336,7 @@ export default function ExerciseDetail() {
           </View>
         </KeyboardAvoidingView>
       </View>
-    </GestureHandlerRootView>
+    </>
   );
 }
 
@@ -673,16 +634,6 @@ const styles = StyleSheet.create({
   },
 
   emptyText: {
-    color: "#6E7178",
-    fontSize: 16,
-  },
-
-  loadingContainer: {
-    alignItems: "center",
-    marginTop: 60,
-  },
-
-  loadingText: {
     color: "#6E7178",
     fontSize: 16,
   },

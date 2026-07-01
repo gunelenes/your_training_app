@@ -1,9 +1,9 @@
-import i18n from "@/src/locales";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getWorkout, updateWorkout } from "@/src/lib/storage";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Alert,
   Image,
@@ -18,38 +18,23 @@ import {
 import Animated, { FadeInUp, SlideInLeft } from "react-native-reanimated";
 
 export default function EditWorkout() {
-  const { id } = useLocalSearchParams();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [name, setName] = useState("");
   const [image, setImage] = useState<string | null>(null);
-  const [langUpdate, setLangUpdate] = useState(0);
 
-  // 🌍 Dil Değişimi
   useEffect(() => {
-    const handler = () => setLangUpdate((x) => x + 1);
-    i18n.on("languageChanged", handler);
-    return () => i18n.off("languageChanged", handler);
-  }, []);
+    (async () => {
+      const w = await getWorkout(id);
+      if (w) {
+        setName(w.name);
+        setImage(w.image || null);
+      }
+    })();
+  }, [id]);
 
-  // 📌 Workout verisini yükle
-  useEffect(() => {
-    loadWorkout();
-  }, []);
-
-  const loadWorkout = async () => {
-    const raw = await AsyncStorage.getItem("WORKOUTS");
-    const list = raw ? JSON.parse(raw) : [];
-
-    const w = list.find((x: any) => x.id === id);
-
-    if (w) {
-      setName(w.name);
-      setImage(w.image || null);
-    }
-  };
-
-  // 📷 Fotoğraf seç
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       quality: 0.8,
@@ -62,38 +47,22 @@ export default function EditWorkout() {
     }
   };
 
-  // 💾 Kaydet
   const saveChanges = async () => {
     if (!name.trim()) {
-      Alert.alert(i18n.t("error"), i18n.t("workout_name_required"));
+      Alert.alert(t("error"), t("workout_name_required"));
       return;
     }
 
-    const raw = await AsyncStorage.getItem("WORKOUTS");
-    const list = raw ? JSON.parse(raw) : [];
-
-    const updated = list.map((w: any) =>
-      w.id === id
-        ? {
-            ...w,
-            name,
-            image,
-          }
-        : w
-    );
-
-    await AsyncStorage.setItem("WORKOUTS", JSON.stringify(updated));
-
+    await updateWorkout(id, { name, image: image ?? undefined });
     router.back();
   };
 
   return (
     <View style={styles.container}>
-      {/* 🔥 Profesyonel Header */}
       <Stack.Screen
         options={{
           headerShown: true,
-          headerTitle: i18n.t("edit_workout"),
+          headerTitle: t("edit_workout"),
           headerStyle: { backgroundColor: "#0A0B0D" },
           headerTintColor: "#667EEA",
           headerTitleStyle: {
@@ -102,7 +71,7 @@ export default function EditWorkout() {
             color: "#fff",
           },
           headerShadowVisible: false,
-          headerBackTitle: i18n.t("back") || "Back",
+          headerBackTitle: t("back"),
           headerBackTitleStyle: { fontSize: 14 },
           gestureEnabled: true,
           fullScreenGestureEnabled: true,
@@ -116,16 +85,14 @@ export default function EditWorkout() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* HEADER */}
         <Animated.View entering={FadeInUp.duration(600)} style={styles.header}>
-          <Text style={styles.headerSubtext}>{i18n.t("edit_workout")}</Text>
-          <Text style={styles.title}>{i18n.t("edit_workout")}</Text>
+          <Text style={styles.headerSubtext}>{t("edit_workout")}</Text>
+          <Text style={styles.title}>{t("edit_workout")}</Text>
           <Text style={styles.headerDescription}>
-            {i18n.t("edit_workout_desc") ?? "Update your workout details"}
+            {t("edit_workout_desc")}
           </Text>
         </Animated.View>
 
-        {/* IMAGE PICKER */}
         <Animated.View entering={SlideInLeft.delay(200)} style={styles.section}>
           <TouchableOpacity onPress={pickImage} activeOpacity={0.8}>
             {image ? (
@@ -144,7 +111,7 @@ export default function EditWorkout() {
                     style={styles.changePhotoBtnGradient}
                   >
                     <Text style={styles.changePhotoBtnText}>
-                      📷 {i18n.t("select_photo")}
+                      📷 {t("select_photo")}
                     </Text>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -152,36 +119,34 @@ export default function EditWorkout() {
             ) : (
               <View style={styles.noImage}>
                 <Text style={{ color: "#6E7178", fontWeight: "600" }}>
-                  {i18n.t("select_photo")}
+                  {t("select_photo")}
                 </Text>
               </View>
             )}
           </TouchableOpacity>
         </Animated.View>
 
-        {/* NAME INPUT */}
         <Animated.View entering={SlideInLeft.delay(350)} style={styles.section}>
-          <Text style={styles.label}>{i18n.t("workout_name")}</Text>
+          <Text style={styles.label}>{t("workout_name")}</Text>
 
           <View style={styles.inputContainer}>
             <TextInput
               value={name}
               onChangeText={setName}
-              placeholder={i18n.t("workout_placeholder")}
+              placeholder={t("workout_placeholder")}
               placeholderTextColor="#6E7178"
               style={styles.input}
             />
           </View>
         </Animated.View>
 
-        {/* SAVE BUTTON */}
         <Animated.View entering={FadeInUp.delay(500)} style={styles.saveContainer}>
           <TouchableOpacity style={styles.saveBtn} onPress={saveChanges}>
             <LinearGradient
               colors={["#4ADE80", "#22C55E"]}
               style={styles.saveBtnGradient}
             >
-              <Text style={styles.saveText}>💾 {i18n.t("save")}</Text>
+              <Text style={styles.saveText}>💾 {t("save")}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
@@ -190,9 +155,6 @@ export default function EditWorkout() {
   );
 }
 
-//
-// 🌙 DARK THEME STYLES
-//
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -237,9 +199,6 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
 
-  //
-  // IMAGE PREVIEW
-  //
   imagePreviewContainer: {
     position: "relative",
     borderRadius: 20,
@@ -285,9 +244,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  //
-  // INPUT
-  //
   label: {
     color: "white",
     fontSize: 18,
@@ -309,9 +265,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  //
-  // SAVE BUTTON
-  //
   saveContainer: {
     marginTop: 10,
   },

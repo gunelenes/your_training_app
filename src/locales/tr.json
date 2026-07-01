@@ -45,7 +45,6 @@
   "edit_workout": "Antrenmanı Düzenle",
   "workout_name_required": "Lütfen antrenman adını girin.",
 
-  /* PROFILE PAGE */
   "manage_preferences": "Tercihlerini yönet",
   "current_language": "Geçerli Dil",
   "active": "Aktif",
@@ -79,8 +78,38 @@
     "fri": "Cum",
     "sat": "Cmt",
     "sun": "Paz"
-}
+  },
 
-
-
+  "delete": "Sil",
+  "cancel": "İptal",
+  "delete_workout": "Antrenmanı Sil",
+  "delete_confirm": "Silmek istediğinize emin misiniz?",
+  "delete_set_title": "Seti Sil",
+  "delete_set_confirm": "Bu seti silmek istediğinize emin misiniz?",
+  "empty": "Boş",
+  "no_exercises": "Henüz egzersiz yok",
+  "no_sets": "Henüz set yok",
+  "no_sets_title": "Set Yok",
+  "tap_add_set": "Başlamak için + Set Ekle'ye dokun",
+  "add_set": "Set Ekle",
+  "change_photo": "Fotoğrafı Değiştir",
+  "exercise_name": "Egzersiz Adı",
+  "exercise_name_required_title": "Ad Gerekli",
+  "workout_plan": "Antrenman Planı",
+  "create_new_label": "Yeni Oluştur",
+  "build_your_workout": "Kendi antrenman planını oluştur",
+  "add_exercises_after": "Antrenmanı oluşturduktan sonra egzersiz ekleyebilirsin",
+  "creating": "Oluşturuluyor...",
+  "saving": "Kaydediliyor...",
+  "your_sets": "Setlerin",
+  "weight": "Ağırlık",
+  "save_progress": "İlerlemeyi Kaydet",
+  "sets_saved": "Setlerin başarıyla kaydedildi.",
+  "exercise_not_found": "Egzersiz bulunamadı",
+  "tap_to_choose_gallery": "Galeriden seçmek için dokun",
+  "error": "Hata",
+  "edit_workout_desc": "Antrenman bilgilerini güncelle",
+  "tap_plus_first_workout": "İlk antrenmanını oluşturmak için + tuşuna dokun",
+  "tap_plus_first_exercise": "İlk egzersizini eklemek için + tuşuna dokun",
+  "coming_soon": "Yakında"
 }

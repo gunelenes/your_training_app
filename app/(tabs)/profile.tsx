@@ -28,13 +28,9 @@ const LANGUAGES: Language[] = [
 export default function Profile() {
   const { t } = useTranslation();
   const [currentLang, setCurrentLang] = useState(i18n.language || "en");
-  const [langUpdate, setLangUpdate] = useState(0);
 
   useEffect(() => {
-    const handler = () => {
-      setCurrentLang(i18n.language);
-      setLangUpdate((x) => x + 1);
-    };
+    const handler = () => setCurrentLang(i18n.language);
     i18n.on("languageChanged", handler);
     return () => i18n.off("languageChanged", handler);
   }, []);
@@ -56,13 +52,12 @@ export default function Profile() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-      
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* HEADER */}
         <Animated.View entering={FadeIn.duration(600)} style={styles.header}>
           <View style={styles.avatarContainer}>
             <LinearGradient
@@ -78,14 +73,12 @@ export default function Profile() {
           <Text style={styles.headerSubtext}>{t("manage_preferences")}</Text>
         </Animated.View>
 
-        {/* LANGUAGE SECTION */}
         <Animated.View entering={SlideInRight.delay(200)} style={styles.section}>
           <Text style={styles.sectionTitle}>
             <Text style={styles.sectionIcon}>🌐 </Text>
             {t("language")}
           </Text>
 
-          {/* CURRENT LANGUAGE DISPLAY */}
           <View style={styles.currentLangCard}>
             <LinearGradient
               colors={['#1A1C1E', '#0F1012']}
@@ -102,7 +95,6 @@ export default function Profile() {
             </LinearGradient>
           </View>
 
-          {/* LANGUAGE OPTIONS */}
           <View style={styles.languageGrid}>
             {LANGUAGES.map((lang, index) => (
               <Animated.View
@@ -145,14 +137,13 @@ export default function Profile() {
           </View>
         </Animated.View>
 
-        {/* SETTINGS SECTION */}
         <Animated.View entering={SlideInRight.delay(500)} style={styles.section}>
           <Text style={styles.sectionTitle}>
             <Text style={styles.sectionIcon}>⚙️ </Text>
             {t("settings")}
           </Text>
 
-          <TouchableOpacity style={styles.settingItem}>
+          <View style={[styles.settingItem, styles.settingItemDisabled]}>
             <View style={styles.settingIconContainer}>
               <Text style={styles.settingIcon}>🔔</Text>
             </View>
@@ -160,10 +151,12 @@ export default function Profile() {
               <Text style={styles.settingTitle}>{t("notifications")}</Text>
               <Text style={styles.settingSubtext}>{t("notifications_desc")}</Text>
             </View>
-            <Text style={styles.settingArrow}>→</Text>
-          </TouchableOpacity>
+            <View style={styles.comingSoonBadge}>
+              <Text style={styles.comingSoonText}>{t("coming_soon")}</Text>
+            </View>
+          </View>
 
-          <TouchableOpacity style={styles.settingItem}>
+          <View style={[styles.settingItem, styles.settingItemDisabled]}>
             <View style={styles.settingIconContainer}>
               <Text style={styles.settingIcon}>📊</Text>
             </View>
@@ -171,10 +164,12 @@ export default function Profile() {
               <Text style={styles.settingTitle}>{t("statistics")}</Text>
               <Text style={styles.settingSubtext}>{t("statistics_desc")}</Text>
             </View>
-            <Text style={styles.settingArrow}>→</Text>
-          </TouchableOpacity>
+            <View style={styles.comingSoonBadge}>
+              <Text style={styles.comingSoonText}>{t("coming_soon")}</Text>
+            </View>
+          </View>
 
-          <TouchableOpacity style={styles.settingItem}>
+          <View style={[styles.settingItem, styles.settingItemDisabled]}>
             <View style={styles.settingIconContainer}>
               <Text style={styles.settingIcon}>🎨</Text>
             </View>
@@ -182,11 +177,12 @@ export default function Profile() {
               <Text style={styles.settingTitle}>{t("theme")}</Text>
               <Text style={styles.settingSubtext}>{t("theme_desc")}</Text>
             </View>
-            <Text style={styles.settingArrow}>→</Text>
-          </TouchableOpacity>
+            <View style={styles.comingSoonBadge}>
+              <Text style={styles.comingSoonText}>{t("coming_soon")}</Text>
+            </View>
+          </View>
         </Animated.View>
 
-        {/* ABOUT SECTION */}
         <Animated.View entering={SlideInRight.delay(700)} style={styles.section}>
           <Text style={styles.sectionTitle}>
             <Text style={styles.sectionIcon}>ℹ️ </Text>
@@ -195,7 +191,7 @@ export default function Profile() {
 
           <View style={styles.aboutCard}>
             <Text style={styles.aboutText}>
-              <Text style={styles.aboutLabel}>{t("version")}: </Text>1.0.0
+              <Text style={styles.aboutLabel}>{t("version")}: </Text>1.1.2
             </Text>
             <Text style={styles.aboutText}>{t("made_with_love")}</Text>
           </View>
@@ -221,7 +217,6 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
 
-  // HEADER
   header: {
     alignItems: "center",
     marginBottom: 40,
@@ -264,7 +259,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  // SECTION
   section: {
     marginBottom: 32,
   },
@@ -280,7 +274,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
 
-  // CURRENT LANGUAGE CARD
   currentLangCard: {
     borderRadius: 20,
     overflow: "hidden",
@@ -335,7 +328,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  // LANGUAGE GRID
   languageGrid: {
     flexDirection: "row",
     gap: 12,
@@ -411,7 +403,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  // SETTINGS
   settingItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -420,6 +411,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: 12,
     gap: 12,
+  },
+
+  settingItemDisabled: {
+    opacity: 0.7,
   },
 
   settingIconContainer: {
@@ -452,12 +447,19 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  settingArrow: {
-    fontSize: 20,
-    color: "#6E7178",
+  comingSoonBadge: {
+    backgroundColor: "rgba(102, 126, 234, 0.15)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
 
-  // ABOUT
+  comingSoonText: {
+    color: "#667EEA",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+
   aboutCard: {
     backgroundColor: "#1A1C1E",
     padding: 20,
