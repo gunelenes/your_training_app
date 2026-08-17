@@ -110,32 +110,6 @@ export default function Profile() {
             </View>
             <Text style={styles.rowArrow}>→</Text>
           </TouchableOpacity>
-
-          <View style={[styles.row, styles.rowDisabled]}>
-            <View style={styles.rowIcon}>
-              <Text style={styles.rowEmoji}>🔔</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.rowTitle}>{t("notifications")}</Text>
-              <Text style={styles.rowSub}>{t("notifications_desc")}</Text>
-            </View>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{t("coming_soon")}</Text>
-            </View>
-          </View>
-
-          <View style={[styles.row, styles.rowDisabled]}>
-            <View style={styles.rowIcon}>
-              <Text style={styles.rowEmoji}>🎨</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.rowTitle}>{t("theme")}</Text>
-              <Text style={styles.rowSub}>{t("theme_desc")}</Text>
-            </View>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{t("coming_soon")}</Text>
-            </View>
-          </View>
         </Animated.View>
 
         {/* About */}
@@ -223,7 +197,6 @@ const styles = StyleSheet.create({
     marginBottom: theme.space.sm,
     gap: theme.space.md,
   },
-  rowDisabled: { opacity: 0.6 },
   rowIcon: {
     width: 40,
     height: 40,
@@ -240,14 +213,6 @@ const styles = StyleSheet.create({
   },
   rowSub: { color: theme.color.textMuted, fontSize: theme.font.size.xs, marginTop: 2 },
   rowArrow: { color: theme.color.textMuted, fontSize: theme.font.size.lg },
-
-  badge: {
-    backgroundColor: theme.color.accentSoft,
-    paddingHorizontal: theme.space.sm,
-    paddingVertical: 4,
-    borderRadius: theme.radius.sm,
-  },
-  badgeText: { color: theme.color.accent, fontSize: 10, fontWeight: theme.font.weight.bold },
 
   aboutCard: {
     backgroundColor: theme.color.surface,
