@@ -2,13 +2,12 @@
   "expo": {
     "name": "Your Workouts",
     "slug": "yourtrainingapp",
-    "version": "1.1.2",
+    "version": "1.1.5",
     "orientation": "portrait",
     "icon": "./assets/images/app-icon.png",
     "scheme": "yourtrainingapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-
     "ios": {
       "bundleIdentifier": "com.enesgunel.yourtrainingapp",
       "supportsTablet": false,
@@ -18,7 +17,6 @@
         "ITSAppUsesNonExemptEncryption": false
       }
     },
-
     "android": {
       "package": "com.enesgunel.yourtrainingapp",
       "versionCode": 5,
@@ -28,12 +26,10 @@
         "backgroundColor": "#000000"
       }
     },
-
     "web": {
       "output": "static",
       "favicon": "./assets/images/app-icon.png"
     },
-
     "plugins": [
       "expo-router",
       [
@@ -49,15 +45,15 @@
         }
       ],
       "expo-localization",
-      "react-native-localize"
+      "react-native-localize",
+      "expo-font",
+      "expo-web-browser"
     ],
-
     "extra": {
       "eas": {
         "projectId": "0257c49a-a3e6-475e-addb-62d3cb053cc9"
       }
     },
-
     "owner": "enesgunel"
   }
 }
