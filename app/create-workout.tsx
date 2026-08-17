@@ -1,5 +1,6 @@
 import { theme } from "@/constants/theme";
 import { hapticSuccess } from "@/src/lib/haptics";
+import { persistImage, resolveImage } from "@/src/lib/images";
 import { addWorkout } from "@/src/lib/storage";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useRouter } from "expo-router";
@@ -34,7 +35,7 @@ export default function CreateWorkout() {
       aspect: [16, 9],
     });
     if (!result.canceled && result.assets.length > 0) {
-      setImage(result.assets[0].uri);
+      setImage(await persistImage(result.assets[0].uri));
     }
   };
 
@@ -90,7 +91,7 @@ export default function CreateWorkout() {
             <Text style={styles.label}>{t("select_photo")}</Text>
             {image ? (
               <View style={styles.imgWrap}>
-                <Image source={{ uri: image }} style={styles.imgPreview} />
+                <Image source={{ uri: resolveImage(image) }} style={styles.imgPreview} />
                 <TouchableOpacity style={styles.changeBtn} onPress={pickImage}>
                   <Text style={styles.changeBtnText}>📷 {t("change_photo")}</Text>
                 </TouchableOpacity>

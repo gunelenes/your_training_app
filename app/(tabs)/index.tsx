@@ -1,6 +1,7 @@
 import TodaySummary from "@/components/today-summary";
 import { theme } from "@/constants/theme";
 import { hapticTap } from "@/src/lib/haptics";
+import { resolveImage } from "@/src/lib/images";
 import { deleteWorkout, getWorkouts, type Workout } from "@/src/lib/storage";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -105,7 +106,7 @@ const WorkoutCard = ({
         <TouchableOpacity activeOpacity={0.85} onPress={() => onPress(item.id)}>
           <View style={styles.card}>
             {item.image && (
-              <Image source={{ uri: item.image }} style={styles.cardImage} blurRadius={0.5} />
+              <Image source={{ uri: resolveImage(item.image) }} style={styles.cardImage} blurRadius={0.5} />
             )}
             <View style={styles.cardOverlay} />
             <View style={styles.cardContent}>

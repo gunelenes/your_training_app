@@ -2,6 +2,7 @@ import ProgressionChart from "@/components/progression-chart";
 import RestTimer from "@/components/rest-timer";
 import { theme } from "@/constants/theme";
 import { hapticSuccess, hapticTap } from "@/src/lib/haptics";
+import { resolveImage } from "@/src/lib/images";
 import { getWorkout, updateExerciseSets, type Exercise, type ExerciseSet } from "@/src/lib/storage";
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
@@ -248,7 +249,7 @@ export default function ExerciseDetail() {
 
         {exercise?.image ? (
           <ImageBackground
-            source={{ uri: exercise.image }}
+            source={{ uri: resolveImage(exercise.image) }}
             style={styles.headerImage}
             blurRadius={1}
           >

@@ -2,6 +2,7 @@ import RestTimer from "@/components/rest-timer";
 import { theme } from "@/constants/theme";
 import { MUSCLE_GROUP_META } from "@/src/lib/exercise-library";
 import { hapticSuccess, hapticTap } from "@/src/lib/haptics";
+import { resolveImage } from "@/src/lib/images";
 import {
   addSession,
   deleteExercise,
@@ -244,7 +245,7 @@ export default function WorkoutDetail() {
         <StatusBar barStyle="light-content" />
 
         {workout?.image ? (
-          <ImageBackground source={{ uri: workout.image }} style={styles.headerImage}>
+          <ImageBackground source={{ uri: resolveImage(workout.image) }} style={styles.headerImage}>
             <View style={styles.headerOverlay} />
             <TouchableOpacity
               style={styles.editBtn}

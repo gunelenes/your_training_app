@@ -3,6 +3,7 @@ import RestTimer from "@/components/rest-timer";
 import { theme } from "@/constants/theme";
 import { inferMuscleGroup, MUSCLE_GROUP_META } from "@/src/lib/exercise-library";
 import { hapticError, hapticSuccess, hapticTap } from "@/src/lib/haptics";
+import { persistImage, resolveImage } from "@/src/lib/images";
 import { addExercise, type ExerciseSet, type MuscleGroup } from "@/src/lib/storage";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
@@ -151,7 +152,7 @@ export default function AddExercise() {
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.7, allowsEditing: true, aspect: [16, 9] });
-    if (!result.canceled) setExerciseImage(result.assets[0].uri);
+    if (!result.canceled) setExerciseImage(await persistImage(result.assets[0].uri));
   };
 
   const takePhoto = async () => {
@@ -161,7 +162,7 @@ export default function AddExercise() {
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.7, allowsEditing: true, aspect: [16, 9] });
-    if (!result.canceled) setExerciseImage(result.assets[0].uri);
+    if (!result.canceled) setExerciseImage(await persistImage(result.assets[0].uri));
   };
 
   const addSet = () => {
@@ -247,7 +248,7 @@ export default function AddExercise() {
             <Animated.View entering={FadeInUp.delay(150)} style={styles.section}>
               {exerciseImage ? (
                 <View style={styles.imgWrap}>
-                  <Image source={{ uri: exerciseImage }} style={styles.imgPreview} />
+                  <Image source={{ uri: resolveImage(exerciseImage) }} style={styles.imgPreview} />
                   <LinearGradient colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.7)"]} style={StyleSheet.absoluteFillObject} />
                   <View style={styles.imgActions}>
                     <TouchableOpacity onPress={pickImage} style={styles.imgActionBtn}>

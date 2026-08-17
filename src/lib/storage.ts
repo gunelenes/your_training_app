@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { deleteImage, rescueLegacyImage } from "./images";
 
 export type ExerciseSet = {
   id: string;
@@ -54,6 +55,7 @@ export type WorkoutSession = {
 const WORKOUTS_KEY = "WORKOUTS";
 const WEIGHTS_KEY = "WEIGHT_LOG";
 const SESSIONS_KEY = "SESSIONS";
+const IMAGE_MIGRATION_KEY = "IMAGES_MIGRATED_V1";
 
 // ---------- WORKOUTS ----------
 
@@ -88,6 +90,11 @@ export async function updateWorkout(
 
 export async function deleteWorkout(id: string): Promise<void> {
   const list = await getWorkouts();
+  const removed = list.find((w) => w.id === id);
+  if (removed) {
+    deleteImage(removed.image);
+    removed.exercises.forEach((e) => deleteImage(e.image));
+  }
   await saveWorkouts(list.filter((w) => w.id !== id));
 }
 
@@ -109,6 +116,10 @@ export async function deleteExercise(
   exerciseId: string
 ): Promise<void> {
   const list = await getWorkouts();
+  const removed = list
+    .find((w) => w.id === workoutId)
+    ?.exercises.find((e) => e.id === exerciseId);
+  if (removed) deleteImage(removed.image);
   const updated = list.map((w) =>
     w.id === workoutId
       ? { ...w, exercises: w.exercises.filter((e) => e.id !== exerciseId) }
@@ -134,6 +145,37 @@ export async function updateExerciseSets(
       : w
   );
   await saveWorkouts(updated);
+}
+
+/**
+ * Eski sürümlerde görsel yolları mutlak olarak saklanıyordu; iOS uygulama
+ * güncellemesinde konteyner klasörünü değiştirdiği için bu yollar bozuluyordu.
+ * Bu geçiş, hâlâ diskte duran dosyaları kalıcı klasöre taşır ve kaybolmuş
+ * olanların ölü referansını temizler. Bir kez çalışır.
+ */
+export async function migrateLegacyImages(): Promise<void> {
+  if (await AsyncStorage.getItem(IMAGE_MIGRATION_KEY)) return;
+
+  const list = await getWorkouts();
+  let changed = false;
+
+  for (const workout of list) {
+    const rescued = await rescueLegacyImage(workout.image);
+    if (rescued !== workout.image) {
+      workout.image = rescued ?? undefined;
+      changed = true;
+    }
+    for (const exercise of workout.exercises) {
+      const rescuedExercise = await rescueLegacyImage(exercise.image);
+      if (rescuedExercise !== exercise.image) {
+        exercise.image = rescuedExercise ?? null;
+        changed = true;
+      }
+    }
+  }
+
+  if (changed) await saveWorkouts(list);
+  await AsyncStorage.setItem(IMAGE_MIGRATION_KEY, "1");
 }
 
 // ---------- WEIGHT LOG ----------

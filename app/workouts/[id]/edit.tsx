@@ -1,5 +1,6 @@
 import { theme } from "@/constants/theme";
 import { hapticSuccess } from "@/src/lib/haptics";
+import { persistImage, resolveImage } from "@/src/lib/images";
 import { getWorkout, updateWorkout } from "@/src/lib/storage";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
@@ -42,7 +43,7 @@ export default function EditWorkout() {
       allowsEditing: true,
       aspect: [16, 9],
     });
-    if (!result.canceled) setImage(result.assets[0].uri);
+    if (!result.canceled) setImage(await persistImage(result.assets[0].uri));
   };
 
   const saveChanges = async () => {
@@ -81,7 +82,7 @@ export default function EditWorkout() {
           <TouchableOpacity onPress={pickImage} activeOpacity={0.85}>
             {image ? (
               <View style={styles.imgWrap}>
-                <Image source={{ uri: image }} style={styles.image} />
+                <Image source={{ uri: resolveImage(image) }} style={styles.image} />
                 <View style={styles.changeBtn}>
                   <Text style={styles.changeBtnText}>📷 {t("select_photo")}</Text>
                 </View>
