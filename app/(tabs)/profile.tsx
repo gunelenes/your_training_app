@@ -1,6 +1,7 @@
 import { theme } from "@/constants/theme";
 import { hapticSelect } from "@/src/lib/haptics";
 import i18n from "@/src/locales";
+import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -26,6 +27,8 @@ const LANGUAGES: Language[] = [
   { code: "en", name: "English", nativeName: "English", flag: "🇬🇧" },
   { code: "tr", name: "Turkish", nativeName: "Türkçe", flag: "🇹🇷" },
 ];
+
+const APP_VERSION = Constants.expoConfig?.version ?? "—";
 
 export default function Profile() {
   const { t } = useTranslation();
@@ -140,7 +143,7 @@ export default function Profile() {
           <Text style={styles.sectionLabel}>{t("about")}</Text>
           <View style={styles.aboutCard}>
             <Text style={styles.aboutRow}>
-              <Text style={styles.aboutKey}>{t("version")}: </Text>1.1.2
+              <Text style={styles.aboutKey}>{t("version")}: </Text>{APP_VERSION}
             </Text>
             <Text style={styles.aboutRow}>{t("made_with_love")}</Text>
           </View>

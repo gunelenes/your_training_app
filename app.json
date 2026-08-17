@@ -43,7 +43,14 @@
         }
       ],
       "expo-localization",
-      "react-native-localize",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Antrenmanlarına ve hareketlerine görsel eklemek için fotoğraflarına erişim izni gerekiyor.",
+          "cameraPermission": "Antrenmanlarına ve hareketlerine fotoğraf çekerek görsel eklemek için kamera izni gerekiyor.",
+          "microphonePermission": false
+        }
+      ],
       "expo-font",
       "expo-web-browser"
     ],
